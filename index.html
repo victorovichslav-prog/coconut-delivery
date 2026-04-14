@@ -56,16 +56,34 @@
 </head>
 <body>
 <div class="app" id="appContainer">
-  <!-- ЭКРАН ВХОДА -->
-  <div id="loginScreen" class="screen">
-    <div class="logo"><span>КОКОС</span><span>ДЕЛИВЕРИ</span></div>
-    <div class="input-group"><label>Твоё имя</label><input type="text" id="loginName" placeholder="Тимофей"></div>
-    <div class="input-group"><label>Фамилия (необязательно)</label><input type="text" id="loginSurname" placeholder=""></div>
-    <div class="input-group"><label>Секретный пароль</label><input type="password" id="loginPassword" placeholder="••••••"></div>
-    <button class="btn" id="loginBtn">Войти</button>
-    <div id="loginError" class="error-msg"></div>
-    <p style="margin-top: 20px; color: #7f6b58;">Пароль знают только свои 🥥</p>
+ <!-- ЭКРАН ВХОДА ЧЕРЕЗ КОД НА ПОЧТУ -->
+<div id="loginScreen" class="screen">
+  <div class="logo"><span>КОКОС</span><span>ДЕЛИВЕРИ</span></div>
+  
+  <!-- Шаг 1: Ввод почты -->
+  <div id="emailStep">
+    <div class="input-group">
+      <label>Твой Email</label>
+      <input type="email" id="loginEmail" placeholder="friend@example.com">
+    </div>
+    <button class="btn" id="sendCodeBtn">📧 Получить код</button>
+    <div id="emailMessage" style="margin-top: 12px; font-size: 14px;"></div>
   </div>
+  
+  <!-- Шаг 2: Ввод кода (изначально скрыт) -->
+  <div id="codeStep" style="display: none;">
+    <div class="input-group">
+      <label>Код из письма (6 цифр)</label>
+      <input type="text" id="loginCode" placeholder="000000" maxlength="6" inputmode="numeric">
+    </div>
+    <button class="btn" id="verifyCodeBtn">✅ Подтвердить код</button>
+    <div id="codeMessage" style="margin-top: 12px; font-size: 14px;"></div>
+    <p style="margin-top: 20px; color: #7f6b58; cursor: pointer;" id="backToEmailBtn">← Назад</p>
+  </div>
+  
+  <div id="loginError" class="error-msg"></div>
+  <p style="margin-top: 20px; color: #7f6b58;">Код придет на почту 🥥</p>
+</div>
 
   <!-- ГЛАВНЫЙ ЭКРАН (скрыт до входа) -->
   <div id="mainScreen" class="screen" style="display: none;">
