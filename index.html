@@ -56,54 +56,45 @@
 </head>
 <body>
 <div class="app" id="appContainer">
-  <!-- ЭКРАН ВХОДА ЧЕРЕЗ КОД НА ПОЧТУ -->
+  <!-- ЭКРАН ВХОДА -->
   <div id="loginScreen" class="screen">
     <div class="logo"><span>КОКОС</span><span>ДЕЛИВЕРИ</span></div>
-    
-    <!-- Шаг 1: Ввод почты -->
     <div id="emailStep">
-      <div class="input-group">
-        <label>Твой Email</label>
-        <input type="email" id="loginEmail" placeholder="friend@example.com">
-      </div>
+      <div class="input-group"><label>Твой Email</label><input type="email" id="loginEmail" placeholder="friend@example.com"></div>
       <button class="btn" id="sendCodeBtn">📧 Получить код</button>
       <div id="emailMessage" style="margin-top: 12px; font-size: 14px;"></div>
     </div>
-    
-    <!-- Шаг 2: Ввод кода (изначально скрыт) -->
     <div id="codeStep" style="display: none;">
-      <div class="input-group">
-        <label>Код из письма (6 цифр)</label>
-        <input type="text" id="loginCode" placeholder="000000" maxlength="6" inputmode="numeric">
-      </div>
+      <div class="input-group"><label>Код из письма (6 цифр)</label><input type="text" id="loginCode" placeholder="000000" maxlength="6" inputmode="numeric"></div>
       <button class="btn" id="verifyCodeBtn">✅ Подтвердить код</button>
       <div id="codeMessage" style="margin-top: 12px; font-size: 14px;"></div>
       <p style="margin-top: 20px; color: #7f6b58; cursor: pointer;" id="backToEmailBtn">← Назад</p>
     </div>
-    
+    <!-- НОВЫЙ ШАГ: ВВОД ИМЕНИ (для новых пользователей) -->
+    <div id="nameStep" style="display: none;">
+      <div class="input-group"><label>Как тебя зовут?</label><input type="text" id="displayName" placeholder="Тимофей"></div>
+      <button class="btn" id="saveNameBtn">🥥 Продолжить</button>
+      <div id="nameMessage" style="margin-top: 12px; font-size: 14px;"></div>
+    </div>
     <div id="loginError" class="error-msg"></div>
     <p style="margin-top: 20px; color: #7f6b58;">Код придет на почту 🥥</p>
   </div>
 
-  <!-- ГЛАВНЫЙ ЭКРАН (скрыт до входа) -->
+  <!-- ГЛАВНЫЙ ЭКРАН -->
   <div id="mainScreen" class="screen" style="display: none;">
     <div class="header">
       <div class="logo"><span>КОКОС</span><span>ДЕЛИВЕРИ</span></div>
       <button class="user-icon" id="userIconBtn">👤</button>
     </div>
     <div id="userGreeting" style="margin-bottom: 16px; font-size: 20px; font-weight: 600; color: #5c3f2b;"></div>
-    <div style="text-align: center; margin-bottom: 20px; font-size: 16px; color: #7f6b58; font-style: italic;">
-      🚚 Перевозка товаров от точки А до точки Б
-    </div>
+    <div style="text-align: center; margin-bottom: 20px; font-size: 16px; color: #7f6b58; font-style: italic;">🚚 Перевозка товаров от точки А до точки Б</div>
     
-    <!-- ФОРМА ЗАКАЗА С АНТИ-СПАМОМ -->
     <label style="font-weight:500; color:#5c4432;">Выбери вес</label>
     <div class="tariff-buttons">
       <div class="tariff-btn" data-tariff="25">до 3 кг · 25₽</div>
       <div class="tariff-btn" data-tariff="50">3–5 кг · 50₽</div>
       <div class="tariff-btn active" data-tariff="100">5+ кг · 100₽</div>
     </div>
-    <!-- Honeypot ловушка для ботов -->
     <div style="opacity: 0; position: absolute; top: 0; left: 0; height: 0; width: 0; z-index: -1;">
       <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
     </div>
@@ -112,53 +103,42 @@
     <div id="orderMessage" class="success-msg"></div>
     <div id="spamMessage" style="color: #c44; text-align: center; margin-top: 10px; display: none;"></div>
 
-    <!-- СПИСОК ЗАКАЗОВ -->
     <h3 style="margin-top: 30px; color:#4e3927;">📋 Мои заказы</h3>
     <ul class="orders-list" id="ordersList"><li style="color:#a28e7a; text-align:center;">Загрузка...</li></ul>
 
-    <!-- ЧАТ (скрыт по умолчанию) -->
     <div id="chatPanel" class="chat-panel" style="display: none;">
       <button class="back-btn" id="closeChatBtn">← Назад к заказам</button>
       <h4>💬 Чат по заказу</h4>
       <div id="chatMessages" class="chat-messages"></div>
-      <div class="chat-input">
-        <input type="text" id="chatInput" placeholder="Напиши сообщение...">
-        <button id="sendChatBtn">➤</button>
-      </div>
+      <div class="chat-input"><input type="text" id="chatInput" placeholder="Напиши сообщение..."><button id="sendChatBtn">➤</button></div>
     </div>
 
-    <!-- Попап профиля -->
     <div class="profile-popup" id="profilePopup">
       <div style="font-weight:bold; font-size:18px; margin-bottom:10px;" id="profileName"></div>
       <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
     </div>
   </div>
-
-  <!-- ПОЛНОЭКРАННОЕ ПРИВЕТСТВИЕ -->
   <div id="fullscreenGreeting" class="greeting-fullscreen"></div>
 </div>
 
 <script>
   (function(){
-    // ---------- НАСТРОЙКИ (уже вставлены твои ключи) ----------
     const SUPABASE_URL = 'https://owoksgyuvgvdhqrqnuwf.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93b2tzZ3l1dmd2ZGhxcnFudXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMDQ5MTQsImV4cCI6MjA5MTY4MDkxNH0.zhZWb041DDu7IH3_9_FC4cCqYerWz_NXUil5o1jvnVg';
-    
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // ---------- СОСТОЯНИЕ ----------
-    let currentUser = null;          // { id, name, email, ... }
+    let currentUser = null;
     let selectedTariff = 100;
     let currentChatOrderId = null;
-    let ordersSubscription = null;
-    let messagesSubscription = null;
-    let blockSubscription = null;
+    let ordersSubscription = null, messagesSubscription = null, blockSubscription = null;
     let currentEmail = '';
+    let pendingAuthUser = null; // временно храним данные после кода
 
     // DOM элементы
     const loginScreen = document.getElementById('loginScreen');
     const emailStep = document.getElementById('emailStep');
     const codeStep = document.getElementById('codeStep');
+    const nameStep = document.getElementById('nameStep');
     const loginEmail = document.getElementById('loginEmail');
     const sendCodeBtn = document.getElementById('sendCodeBtn');
     const emailMessage = document.getElementById('emailMessage');
@@ -166,6 +146,9 @@
     const verifyCodeBtn = document.getElementById('verifyCodeBtn');
     const codeMessage = document.getElementById('codeMessage');
     const backToEmailBtn = document.getElementById('backToEmailBtn');
+    const displayName = document.getElementById('displayName');
+    const saveNameBtn = document.getElementById('saveNameBtn');
+    const nameMessage = document.getElementById('nameMessage');
     const loginError = document.getElementById('loginError');
     const mainScreen = document.getElementById('mainScreen');
     const userGreeting = document.getElementById('userGreeting');
@@ -187,7 +170,6 @@
     const closeChatBtn = document.getElementById('closeChatBtn');
     const honeypot = document.getElementById('honeypot');
 
-    // ---------- ФУНКЦИИ ----------
     function showGreeting(name) {
       fullscreenGreeting.textContent = `ПРИВЕТ, ${name.toUpperCase()}`;
       fullscreenGreeting.style.animation = 'none';
@@ -200,112 +182,36 @@
       if (blockSubscription) supabase.removeChannel(blockSubscription);
       blockSubscription = supabase
         .channel('blocked-check')
-        .on('postgres_changes', 
-          { event: 'INSERT', schema: 'public', table: 'blocked_users', filter: `user_name=eq.${currentUser.email}` },
-          () => {
-            alert('⛔ Ваш аккаунт был заблокирован.');
-            logout();
-          }
-        )
-        .subscribe();
-    }
-
-    async function loginWithEmail(email) {
-      // Проверка блокировки (по email)
-      const { data: blocked } = await supabase
-        .from('blocked_users')
-        .select('id')
-        .ilike('user_name', email)
-        .maybeSingle();
-      if (blocked) throw new Error('⛔ Ваш аккаунт заблокирован.');
-
-      // Получаем или создаём пользователя в таблице users
-      const { data: existing } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
-      
-      let user = existing;
-      if (!user) {
-        const { data: newUser, error } = await supabase
-          .from('users')
-          .insert({ 
-            name: email.split('@')[0], 
-            email: email,
-            surname: null 
-          })
-          .select()
-          .single();
-        if (error) throw error;
-        user = newUser;
-      }
-      return user;
-    }
-
-    function logout() {
-      supabase.auth.signOut().then(() => {
-        currentUser = null;
-        localStorage.removeItem('coconutUserEmail');
-        if (ordersSubscription) supabase.removeChannel(ordersSubscription);
-        if (messagesSubscription) supabase.removeChannel(messagesSubscription);
-        if (blockSubscription) supabase.removeChannel(blockSubscription);
-        blockSubscription = null;
-        loginScreen.style.display = 'block';
-        mainScreen.style.display = 'none';
-        profilePopup.classList.remove('show');
-        emailStep.style.display = 'block';
-        codeStep.style.display = 'none';
-        loginEmail.value = '';
-        loginCode.value = '';
-        emailMessage.textContent = '';
-        codeMessage.textContent = '';
-      });
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'blocked_users', filter: `user_name=eq.${currentUser.name}` }, () => {
+          alert('⛔ Ваш аккаунт был заблокирован.');
+          logout();
+        }).subscribe();
     }
 
     async function loadOrders() {
       if (!currentUser) return;
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('orders').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
       if (error) { console.error(error); return; }
       renderOrders(data || []);
     }
 
     function renderOrders(orders) {
-      if (orders.length === 0) {
-        ordersList.innerHTML = '<li style="color:#a28e7a; text-align:center;">Пока заказов нет</li>';
-        return;
-      }
+      if (orders.length === 0) { ordersList.innerHTML = '<li style="color:#a28e7a; text-align:center;">Пока заказов нет</li>'; return; }
       let html = '';
       orders.forEach(order => {
         let tariffText = order.tariff === 25 ? 'до 3 кг · 25₽' : (order.tariff === 50 ? '3–5 кг · 50₽' : '5+ кг · 100₽');
         let statusClass = order.status === 'pending' ? 'pending' : (order.status === 'accepted' ? 'accepted' : 'rejected');
         let statusText = order.status === 'pending' ? '🕒 Ожидает' : (order.status === 'accepted' ? '✅ Принят' : '❌ Отклонён');
-        html += `<li class="order-item">
-          <div class="order-header">
-            <span><strong>${tariffText}</strong></span>
-            <span class="order-status ${statusClass}">${statusText}</span>
-          </div>
-          <div style="margin-bottom:8px;">${order.description}</div>
-          <span class="chat-link" data-order-id="${order.id}">💬 Чат</span>
-        </li>`;
+        html += `<li class="order-item"><div class="order-header"><span><strong>${tariffText}</strong></span><span class="order-status ${statusClass}">${statusText}</span></div><div style="margin-bottom:8px;">${order.description}</div><span class="chat-link" data-order-id="${order.id}">💬 Чат</span></li>`;
       });
       ordersList.innerHTML = html;
-      document.querySelectorAll('.chat-link').forEach(link => {
-        link.addEventListener('click', (e) => openChat(e.target.dataset.orderId));
-      });
+      document.querySelectorAll('.chat-link').forEach(link => link.addEventListener('click', (e) => openChat(e.target.dataset.orderId)));
     }
 
     async function subscribeToOrders() {
       if (!currentUser) return;
       if (ordersSubscription) supabase.removeChannel(ordersSubscription);
-      ordersSubscription = supabase
-        .channel('orders-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${currentUser.id}` }, () => loadOrders())
-        .subscribe();
+      ordersSubscription = supabase.channel('orders-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${currentUser.id}` }, () => loadOrders()).subscribe();
     }
 
     async function openChat(orderId) {
@@ -315,36 +221,22 @@
       document.querySelector('h3').style.display = 'none';
       await loadMessages();
       if (messagesSubscription) supabase.removeChannel(messagesSubscription);
-      messagesSubscription = supabase
-        .channel(`messages-${orderId}`)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `order_id=eq.${orderId}` }, () => loadMessages())
-        .subscribe();
+      messagesSubscription = supabase.channel(`messages-${orderId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `order_id=eq.${orderId}` }, () => loadMessages()).subscribe();
     }
 
     async function loadMessages() {
       if (!currentChatOrderId) return;
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('order_id', currentChatOrderId)
-        .order('created_at', { ascending: true });
+      const { data, error } = await supabase.from('messages').select('*').eq('order_id', currentChatOrderId).order('created_at', { ascending: true });
       if (error) { console.error(error); return; }
       let html = '';
-      data.forEach(msg => {
-        const cls = msg.sender_type === 'user' ? 'user' : 'owner';
-        html += `<div class="chat-msg ${cls}"><span>${msg.text}</span></div>`;
-      });
+      data.forEach(msg => { const cls = msg.sender_type === 'user' ? 'user' : 'owner'; html += `<div class="chat-msg ${cls}"><span>${msg.text}</span></div>`; });
       chatMessages.innerHTML = html || '<div style="color:#999; text-align:center;">Пока сообщений нет</div>';
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     async function sendMessage(text) {
       if (!currentChatOrderId || !text.trim()) return;
-      await supabase.from('messages').insert({
-        order_id: currentChatOrderId,
-        sender_type: 'user',
-        text: text.trim()
-      });
+      await supabase.from('messages').insert({ order_id: currentChatOrderId, sender_type: 'user', text: text.trim() });
       chatInput.value = '';
     }
 
@@ -356,157 +248,145 @@
       if (messagesSubscription) supabase.removeChannel(messagesSubscription);
     }
 
-    // ---------- ОБРАБОТЧИКИ ВХОДА ----------
+    function logout() {
+      supabase.auth.signOut().then(() => {
+        currentUser = null; pendingAuthUser = null;
+        localStorage.clear();
+        if (ordersSubscription) supabase.removeChannel(ordersSubscription);
+        if (messagesSubscription) supabase.removeChannel(messagesSubscription);
+        if (blockSubscription) supabase.removeChannel(blockSubscription);
+        blockSubscription = null;
+        loginScreen.style.display = 'block'; mainScreen.style.display = 'none';
+        profilePopup.classList.remove('show');
+        emailStep.style.display = 'block'; codeStep.style.display = 'none'; nameStep.style.display = 'none';
+        loginEmail.value = ''; loginCode.value = ''; displayName.value = '';
+      });
+    }
+
+    // ----- ВХОД -----
     sendCodeBtn.addEventListener('click', async () => {
       const email = loginEmail.value.trim();
-      if (!email) {
-        emailMessage.textContent = '❌ Введи почту';
-        emailMessage.style.color = '#c44';
-        return;
-      }
+      if (!email) { emailMessage.textContent = '❌ Введи почту'; emailMessage.style.color = '#c44'; return; }
       currentEmail = email;
-      emailMessage.textContent = '📤 Отправляю код...';
-      emailMessage.style.color = '#7f6b58';
+      emailMessage.textContent = '📤 Отправляю код...'; emailMessage.style.color = '#7f6b58';
       sendCodeBtn.disabled = true;
-      
       const { error } = await supabase.auth.signInWithOtp({ email });
-      
       if (error) {
-        emailMessage.textContent = `❌ Ошибка: ${error.message}`;
-        emailMessage.style.color = '#c44';
+        emailMessage.textContent = `❌ Ошибка: ${error.message}`; emailMessage.style.color = '#c44';
         sendCodeBtn.disabled = false;
       } else {
-        emailMessage.textContent = '✅ Код отправлен! Проверь почту.';
-        emailMessage.style.color = '#2e7d32';
-        emailStep.style.display = 'none';
-        codeStep.style.display = 'block';
+        emailMessage.textContent = '✅ Код отправлен! Проверь почту.'; emailMessage.style.color = '#2e7d32';
+        emailStep.style.display = 'none'; codeStep.style.display = 'block';
         sendCodeBtn.disabled = false;
       }
     });
 
     verifyCodeBtn.addEventListener('click', async () => {
       const code = loginCode.value.trim();
-      if (!code || code.length !== 6) {
-        codeMessage.textContent = '❌ Введи 6-значный код';
-        codeMessage.style.color = '#c44';
-        return;
-      }
-      codeMessage.textContent = '🔄 Проверяю код...';
-      codeMessage.style.color = '#7f6b58';
+      if (!code || code.length !== 6) { codeMessage.textContent = '❌ Введи 6-значный код'; codeMessage.style.color = '#c44'; return; }
+      codeMessage.textContent = '🔄 Проверяю код...'; codeMessage.style.color = '#7f6b58';
       verifyCodeBtn.disabled = true;
-      
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: currentEmail,
-        token: code,
-        type: 'email'
-      });
-      
+      const { data, error } = await supabase.auth.verifyOtp({ email: currentEmail, token: code, type: 'email' });
       if (error) {
-        codeMessage.textContent = `❌ ${error.message}`;
-        codeMessage.style.color = '#c44';
+        codeMessage.textContent = `❌ ${error.message}`; codeMessage.style.color = '#c44';
         verifyCodeBtn.disabled = false;
       } else {
-        codeMessage.textContent = '✅ Успешно! Загружаю...';
-        codeMessage.style.color = '#2e7d32';
-        
-        try {
-          const user = await loginWithEmail(currentEmail);
-          currentUser = user;
-          localStorage.setItem('coconutUserEmail', currentEmail);
-          
-          subscribeToBlock();
-          showGreeting(user.name);
-          loginScreen.style.display = 'none';
-          mainScreen.style.display = 'block';
-          userGreeting.textContent = `🥥 Привет, ${user.name}!`;
-          profileName.textContent = `${user.name}`;
-          
-          loadOrders();
-          subscribeToOrders();
-        } catch (err) {
+        const user = data.user;
+        if (!user) { verifyCodeBtn.disabled = false; return; }
+        pendingAuthUser = user;
+        // Проверка блокировки
+        const { data: blocked } = await supabase.from('blocked_users').select('id').ilike('user_name', user.email).maybeSingle();
+        if (blocked) {
           await supabase.auth.signOut();
-          codeMessage.textContent = err.message;
-          codeMessage.style.color = '#c44';
-          emailStep.style.display = 'block';
+          loginError.textContent = '⛔ Ваш аккаунт заблокирован.';
+          emailStep.style.display = 'block'; codeStep.style.display = 'none';
+          verifyCodeBtn.disabled = false; pendingAuthUser = null;
+          return;
+        }
+        // Проверяем, есть ли уже пользователь в таблице users
+        const { data: existing } = await supabase.from('users').select('*').eq('email', user.email).maybeSingle();
+        if (existing && existing.name) {
+          // Пользователь уже есть, просто входим
+          currentUser = existing;
+          localStorage.setItem('coconutUserId', existing.id);
+          finishLogin(existing);
+        } else {
+          // Новый пользователь или нет имени – показываем поле ввода имени
           codeStep.style.display = 'none';
+          nameStep.style.display = 'block';
+          // Предлагаем имя из email
+          displayName.value = user.email.split('@')[0];
         }
         verifyCodeBtn.disabled = false;
       }
     });
 
+    saveNameBtn.addEventListener('click', async () => {
+      const name = displayName.value.trim();
+      if (!name) { nameMessage.textContent = '❌ Введи имя'; nameMessage.style.color = '#c44'; return; }
+      if (!pendingAuthUser) { nameMessage.textContent = '❌ Сессия истекла, начни заново'; return; }
+      saveNameBtn.disabled = true;
+      nameMessage.textContent = '⏳ Сохраняю...'; nameMessage.style.color = '#7f6b58';
+      // Сохраняем или обновляем пользователя
+      const { data: existing } = await supabase.from('users').select('*').eq('email', pendingAuthUser.email).maybeSingle();
+      let user = existing;
+      if (!user) {
+        const { data: newUser, error } = await supabase.from('users').insert({ name, email: pendingAuthUser.email }).select().single();
+        if (error) { nameMessage.textContent = '❌ Ошибка сохранения'; saveNameBtn.disabled = false; return; }
+        user = newUser;
+      } else {
+        const { data: updated, error } = await supabase.from('users').update({ name }).eq('id', user.id).select().single();
+        if (error) { nameMessage.textContent = '❌ Ошибка обновления'; saveNameBtn.disabled = false; return; }
+        user = updated;
+      }
+      currentUser = user;
+      localStorage.setItem('coconutUserId', user.id);
+      finishLogin(user);
+    });
+
+    function finishLogin(user) {
+      showGreeting(user.name);
+      loginScreen.style.display = 'none';
+      mainScreen.style.display = 'block';
+      userGreeting.textContent = `🥥 Привет, ${user.name}!`;
+      profileName.textContent = user.name;
+      loadOrders();
+      subscribeToOrders();
+      subscribeToBlock();
+      pendingAuthUser = null;
+      emailStep.style.display = 'block'; codeStep.style.display = 'none'; nameStep.style.display = 'none';
+      loginEmail.value = ''; loginCode.value = ''; displayName.value = '';
+    }
+
     backToEmailBtn.addEventListener('click', () => {
-      emailStep.style.display = 'block';
-      codeStep.style.display = 'none';
-      loginCode.value = '';
-      codeMessage.textContent = '';
+      emailStep.style.display = 'block'; codeStep.style.display = 'none'; nameStep.style.display = 'none';
+      loginCode.value = ''; codeMessage.textContent = ''; pendingAuthUser = null;
     });
 
-    loginCode.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') verifyCodeBtn.click();
-    });
+    loginCode.addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyCodeBtn.click(); });
+    displayName.addEventListener('keypress', (e) => { if (e.key === 'Enter') saveNameBtn.click(); });
 
-    // ---------- ОСТАЛЬНЫЕ ОБРАБОТЧИКИ ----------
-    tariffBtns.forEach(btn => {
-      btn.addEventListener('click', function() {
-        tariffBtns.forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        selectedTariff = parseInt(this.dataset.tariff);
-      });
-    });
+    // ----- ЗАКАЗЫ -----
+    tariffBtns.forEach(btn => btn.addEventListener('click', function() {
+      tariffBtns.forEach(b => b.classList.remove('active')); this.classList.add('active');
+      selectedTariff = parseInt(this.dataset.tariff);
+    }));
 
     sendOrderBtn.addEventListener('click', async () => {
       if (!currentUser) return;
       if (honeypot.value !== '') return;
-      
       const desc = orderDesc.value.trim();
-      if (!desc) {
-        orderMessage.textContent = '❌ Напиши что заказать';
-        orderMessage.style.color = '#c44';
-        return;
-      }
-      
+      if (!desc) { orderMessage.textContent = '❌ Напиши что заказать'; orderMessage.style.color = '#c44'; return; }
       const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-      const { data: recent } = await supabase
-        .from('rate_limits')
-        .select('id')
-        .eq('user_name', currentUser.email)
-        .eq('action_type', 'order')
-        .gte('created_at', tenMinutesAgo);
-      
-      if (recent && recent.length >= 3) {
-        spamMessage.textContent = '⏳ Слишком много заказов. Подожди 10 минут.';
-        spamMessage.style.display = 'block';
-        orderMessage.textContent = '';
-        return;
-      }
+      const { data: recent } = await supabase.from('rate_limits').select('id').eq('user_name', currentUser.name).eq('action_type', 'order').gte('created_at', tenMinutesAgo);
+      if (recent && recent.length >= 3) { spamMessage.textContent = '⏳ Слишком много заказов. Подожди 10 минут.'; spamMessage.style.display = 'block'; return; }
       spamMessage.style.display = 'none';
-      
-      sendOrderBtn.disabled = true;
-      sendOrderBtn.textContent = '📤 Отправляю...';
-      
-      await supabase.from('rate_limits').insert({
-        user_name: currentUser.email,
-        action_type: 'order'
-      });
-      
-      const { error } = await supabase.from('orders').insert({
-        user_id: currentUser.id,
-        description: desc,
-        tariff: selectedTariff,
-        status: 'pending'
-      });
-      
-      if (error) {
-        orderMessage.textContent = '❌ Ошибка создания заказа';
-        orderMessage.style.color = '#c44';
-      } else {
-        orderMessage.textContent = '✅ Заказ создан! Ожидай ответа';
-        orderMessage.style.color = '#2e7d32';
-        orderDesc.value = '';
-        honeypot.value = '';
-      }
-      sendOrderBtn.disabled = false;
-      sendOrderBtn.textContent = '🚀 Отправить заказ';
+      sendOrderBtn.disabled = true; sendOrderBtn.textContent = '📤 Отправляю...';
+      await supabase.from('rate_limits').insert({ user_name: currentUser.name, action_type: 'order' });
+      const { error } = await supabase.from('orders').insert({ user_id: currentUser.id, description: desc, tariff: selectedTariff, status: 'pending' });
+      if (error) { orderMessage.textContent = '❌ Ошибка создания заказа'; orderMessage.style.color = '#c44'; }
+      else { orderMessage.textContent = '✅ Заказ создан! Ожидай ответа'; orderMessage.style.color = '#2e7d32'; orderDesc.value = ''; honeypot.value = ''; }
+      sendOrderBtn.disabled = false; sendOrderBtn.textContent = '🚀 Отправить заказ';
     });
 
     userIconBtn.addEventListener('click', (e) => { e.stopPropagation(); profilePopup.classList.toggle('show'); });
@@ -516,26 +396,22 @@
     sendChatBtn.addEventListener('click', () => sendMessage(chatInput.value));
     chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(chatInput.value); });
 
-    // ---------- АВТОВХОД ----------
-    const savedEmail = localStorage.getItem('coconutUserEmail');
+    // Автовход
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user && savedEmail) {
-        loginWithEmail(savedEmail).then(user => {
-          supabase.from('blocked_users').select('id').ilike('user_name', savedEmail).maybeSingle().then(({ data: blocked }) => {
-            if (blocked) {
-              supabase.auth.signOut();
-              return;
-            }
-            currentUser = user;
-            subscribeToBlock();
-            loginScreen.style.display = 'none';
-            mainScreen.style.display = 'block';
-            userGreeting.textContent = `🥥 Привет, ${user.name}!`;
-            profileName.textContent = `${user.name}`;
-            loadOrders();
-            subscribeToOrders();
-          });
-        }).catch(() => {});
+      if (session?.user) {
+        const user = session.user;
+        supabase.from('users').select('*').eq('email', user.email).maybeSingle().then(({ data: dbUser }) => {
+          if (dbUser) {
+            supabase.from('blocked_users').select('id').ilike('user_name', user.email).maybeSingle().then(({ data: blocked }) => {
+              if (blocked) { supabase.auth.signOut(); return; }
+              currentUser = dbUser;
+              loginScreen.style.display = 'none'; mainScreen.style.display = 'block';
+              userGreeting.textContent = `🥥 Привет, ${dbUser.name}!`;
+              profileName.textContent = dbUser.name;
+              loadOrders(); subscribeToOrders(); subscribeToBlock();
+            });
+          }
+        });
       }
     });
   })();
