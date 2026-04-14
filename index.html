@@ -56,31 +56,40 @@
 </head>
 <body>
 <div class="app" id="appContainer">
-  <!-- ЭКРАН ВХОДА -->
+  <!-- ЭКРАН ВХОДА (Email + Имя сразу) -->
   <div id="loginScreen" class="screen">
     <div class="logo"><span>КОКОС</span><span>ДЕЛИВЕРИ</span></div>
+    
+    <!-- Шаг 1: Email и Имя -->
     <div id="emailStep">
-      <div class="input-group"><label>Твой Email</label><input type="email" id="loginEmail" placeholder="friend@example.com"></div>
+      <div class="input-group">
+        <label>Твой Email</label>
+        <input type="email" id="loginEmail" placeholder="friend@example.com">
+      </div>
+      <div class="input-group">
+        <label>Твоё имя</label>
+        <input type="text" id="loginNameInput" placeholder="Тимофей">
+      </div>
       <button class="btn" id="sendCodeBtn">📧 Получить код</button>
       <div id="emailMessage" style="margin-top: 12px; font-size: 14px;"></div>
     </div>
+    
+    <!-- Шаг 2: Код -->
     <div id="codeStep" style="display: none;">
-      <div class="input-group"><label>Код из письма (6 цифр)</label><input type="text" id="loginCode" placeholder="000000" maxlength="6" inputmode="numeric"></div>
+      <div class="input-group">
+        <label>Код из письма (6 цифр)</label>
+        <input type="text" id="loginCode" placeholder="000000" maxlength="6" inputmode="numeric">
+      </div>
       <button class="btn" id="verifyCodeBtn">✅ Подтвердить код</button>
       <div id="codeMessage" style="margin-top: 12px; font-size: 14px;"></div>
       <p style="margin-top: 20px; color: #7f6b58; cursor: pointer;" id="backToEmailBtn">← Назад</p>
     </div>
-    <!-- НОВЫЙ ШАГ: ВВОД ИМЕНИ (для новых пользователей) -->
-    <div id="nameStep" style="display: none;">
-      <div class="input-group"><label>Как тебя зовут?</label><input type="text" id="displayName" placeholder="Тимофей"></div>
-      <button class="btn" id="saveNameBtn">🥥 Продолжить</button>
-      <div id="nameMessage" style="margin-top: 12px; font-size: 14px;"></div>
-    </div>
+    
     <div id="loginError" class="error-msg"></div>
     <p style="margin-top: 20px; color: #7f6b58;">Код придет на почту 🥥</p>
   </div>
 
-  <!-- ГЛАВНЫЙ ЭКРАН -->
+  <!-- ГЛАВНЫЙ ЭКРАН (без изменений) -->
   <div id="mainScreen" class="screen" style="display: none;">
     <div class="header">
       <div class="logo"><span>КОКОС</span><span>ДЕЛИВЕРИ</span></div>
@@ -132,23 +141,20 @@
     let currentChatOrderId = null;
     let ordersSubscription = null, messagesSubscription = null, blockSubscription = null;
     let currentEmail = '';
-    let pendingAuthUser = null; // временно храним данные после кода
+    let pendingName = ''; // Имя, введённое на первом шаге
 
-    // DOM элементы
+    // DOM
     const loginScreen = document.getElementById('loginScreen');
     const emailStep = document.getElementById('emailStep');
     const codeStep = document.getElementById('codeStep');
-    const nameStep = document.getElementById('nameStep');
     const loginEmail = document.getElementById('loginEmail');
+    const loginNameInput = document.getElementById('loginNameInput');
     const sendCodeBtn = document.getElementById('sendCodeBtn');
     const emailMessage = document.getElementById('emailMessage');
     const loginCode = document.getElementById('loginCode');
     const verifyCodeBtn = document.getElementById('verifyCodeBtn');
     const codeMessage = document.getElementById('codeMessage');
     const backToEmailBtn = document.getElementById('backToEmailBtn');
-    const displayName = document.getElementById('displayName');
-    const saveNameBtn = document.getElementById('saveNameBtn');
-    const nameMessage = document.getElementById('nameMessage');
     const loginError = document.getElementById('loginError');
     const mainScreen = document.getElementById('mainScreen');
     const userGreeting = document.getElementById('userGreeting');
@@ -250,7 +256,7 @@
 
     function logout() {
       supabase.auth.signOut().then(() => {
-        currentUser = null; pendingAuthUser = null;
+        currentUser = null; pendingName = '';
         localStorage.clear();
         if (ordersSubscription) supabase.removeChannel(ordersSubscription);
         if (messagesSubscription) supabase.removeChannel(messagesSubscription);
@@ -258,16 +264,19 @@
         blockSubscription = null;
         loginScreen.style.display = 'block'; mainScreen.style.display = 'none';
         profilePopup.classList.remove('show');
-        emailStep.style.display = 'block'; codeStep.style.display = 'none'; nameStep.style.display = 'none';
-        loginEmail.value = ''; loginCode.value = ''; displayName.value = '';
+        emailStep.style.display = 'block'; codeStep.style.display = 'none';
+        loginEmail.value = ''; loginNameInput.value = ''; loginCode.value = '';
       });
     }
 
     // ----- ВХОД -----
     sendCodeBtn.addEventListener('click', async () => {
       const email = loginEmail.value.trim();
+      const name = loginNameInput.value.trim();
       if (!email) { emailMessage.textContent = '❌ Введи почту'; emailMessage.style.color = '#c44'; return; }
+      if (!name) { emailMessage.textContent = '❌ Введи имя'; emailMessage.style.color = '#c44'; return; }
       currentEmail = email;
+      pendingName = name;
       emailMessage.textContent = '📤 Отправляю код...'; emailMessage.style.color = '#7f6b58';
       sendCodeBtn.disabled = true;
       const { error } = await supabase.auth.signInWithOtp({ email });
@@ -293,80 +302,51 @@
       } else {
         const user = data.user;
         if (!user) { verifyCodeBtn.disabled = false; return; }
-        pendingAuthUser = user;
         // Проверка блокировки
         const { data: blocked } = await supabase.from('blocked_users').select('id').ilike('user_name', user.email).maybeSingle();
         if (blocked) {
           await supabase.auth.signOut();
           loginError.textContent = '⛔ Ваш аккаунт заблокирован.';
           emailStep.style.display = 'block'; codeStep.style.display = 'none';
-          verifyCodeBtn.disabled = false; pendingAuthUser = null;
+          verifyCodeBtn.disabled = false; pendingName = '';
           return;
         }
-        // Проверяем, есть ли уже пользователь в таблице users
+        // Создаём или получаем пользователя с указанным именем
         const { data: existing } = await supabase.from('users').select('*').eq('email', user.email).maybeSingle();
-        if (existing && existing.name) {
-          // Пользователь уже есть, просто входим
-          currentUser = existing;
-          localStorage.setItem('coconutUserId', existing.id);
-          finishLogin(existing);
+        let dbUser = existing;
+        if (!dbUser) {
+          const { data: newUser, error: insertErr } = await supabase.from('users').insert({ name: pendingName, email: user.email }).select().single();
+          if (insertErr) { codeMessage.textContent = '❌ Ошибка создания'; verifyCodeBtn.disabled = false; return; }
+          dbUser = newUser;
         } else {
-          // Новый пользователь или нет имени – показываем поле ввода имени
-          codeStep.style.display = 'none';
-          nameStep.style.display = 'block';
-          // Предлагаем имя из email
-          displayName.value = user.email.split('@')[0];
+          // Обновим имя на случай, если пользователь ввёл новое
+          const { data: updated } = await supabase.from('users').update({ name: pendingName }).eq('id', dbUser.id).select().single();
+          if (updated) dbUser = updated;
         }
-        verifyCodeBtn.disabled = false;
+        currentUser = dbUser;
+        localStorage.setItem('coconutUserId', dbUser.id);
+        showGreeting(dbUser.name);
+        loginScreen.style.display = 'none';
+        mainScreen.style.display = 'block';
+        userGreeting.textContent = `🥥 Привет, ${dbUser.name}!`;
+        profileName.textContent = dbUser.name;
+        loadOrders();
+        subscribeToOrders();
+        subscribeToBlock();
+        pendingName = '';
+        emailStep.style.display = 'block'; codeStep.style.display = 'none';
+        loginEmail.value = ''; loginNameInput.value = ''; loginCode.value = '';
       }
     });
-
-    saveNameBtn.addEventListener('click', async () => {
-      const name = displayName.value.trim();
-      if (!name) { nameMessage.textContent = '❌ Введи имя'; nameMessage.style.color = '#c44'; return; }
-      if (!pendingAuthUser) { nameMessage.textContent = '❌ Сессия истекла, начни заново'; return; }
-      saveNameBtn.disabled = true;
-      nameMessage.textContent = '⏳ Сохраняю...'; nameMessage.style.color = '#7f6b58';
-      // Сохраняем или обновляем пользователя
-      const { data: existing } = await supabase.from('users').select('*').eq('email', pendingAuthUser.email).maybeSingle();
-      let user = existing;
-      if (!user) {
-        const { data: newUser, error } = await supabase.from('users').insert({ name, email: pendingAuthUser.email }).select().single();
-        if (error) { nameMessage.textContent = '❌ Ошибка сохранения'; saveNameBtn.disabled = false; return; }
-        user = newUser;
-      } else {
-        const { data: updated, error } = await supabase.from('users').update({ name }).eq('id', user.id).select().single();
-        if (error) { nameMessage.textContent = '❌ Ошибка обновления'; saveNameBtn.disabled = false; return; }
-        user = updated;
-      }
-      currentUser = user;
-      localStorage.setItem('coconutUserId', user.id);
-      finishLogin(user);
-    });
-
-    function finishLogin(user) {
-      showGreeting(user.name);
-      loginScreen.style.display = 'none';
-      mainScreen.style.display = 'block';
-      userGreeting.textContent = `🥥 Привет, ${user.name}!`;
-      profileName.textContent = user.name;
-      loadOrders();
-      subscribeToOrders();
-      subscribeToBlock();
-      pendingAuthUser = null;
-      emailStep.style.display = 'block'; codeStep.style.display = 'none'; nameStep.style.display = 'none';
-      loginEmail.value = ''; loginCode.value = ''; displayName.value = '';
-    }
 
     backToEmailBtn.addEventListener('click', () => {
-      emailStep.style.display = 'block'; codeStep.style.display = 'none'; nameStep.style.display = 'none';
-      loginCode.value = ''; codeMessage.textContent = ''; pendingAuthUser = null;
+      emailStep.style.display = 'block'; codeStep.style.display = 'none';
+      loginCode.value = ''; codeMessage.textContent = '';
     });
 
     loginCode.addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyCodeBtn.click(); });
-    displayName.addEventListener('keypress', (e) => { if (e.key === 'Enter') saveNameBtn.click(); });
 
-    // ----- ЗАКАЗЫ -----
+    // ----- ЗАКАЗЫ (без изменений) -----
     tariffBtns.forEach(btn => btn.addEventListener('click', function() {
       tariffBtns.forEach(b => b.classList.remove('active')); this.classList.add('active');
       selectedTariff = parseInt(this.dataset.tariff);
