@@ -74,20 +74,25 @@
       <button class="user-icon" id="userIconBtn">👤</button>
     </div>
     <div id="userGreeting" style="margin-bottom: 16px; font-size: 20px; font-weight: 600; color: #5c3f2b;"></div>
+    <div style="text-align: center; margin-bottom: 20px; font-size: 16px; color: #7f6b58; font-style: italic;">
+      🚚 Перевозка товаров от точки А до точки Б
+    </div>
     
-    <!-- ФОРМА ЗАКАЗА -->
+    <!-- ФОРМА ЗАКАЗА С АНТИ-СПАМОМ -->
     <label style="font-weight:500; color:#5c4432;">Выбери вес</label>
     <div class="tariff-buttons">
       <div class="tariff-btn" data-tariff="25">до 3 кг · 25₽</div>
       <div class="tariff-btn" data-tariff="50">3–5 кг · 50₽</div>
       <div class="tariff-btn active" data-tariff="100">5+ кг · 100₽</div>
     </div>
+    <!-- Honeypot ловушка для ботов -->
+    <div style="opacity: 0; position: absolute; top: 0; left: 0; height: 0; width: 0; z-index: -1;">
+      <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
+    </div>
     <textarea id="orderDesc" class="order-textarea" rows="3" placeholder="Что заказать и куда доставить?"></textarea>
     <button class="btn" id="sendOrderBtn">🚀 Отправить заказ</button>
     <div id="orderMessage" class="success-msg"></div>
-<div style="text-align: center; margin-bottom: 20px; font-size: 16px; color: #7f6b58; font-style: italic;">
-  🚚 Перевозка товаров от точки А до точки Б
-</div>
+    <div id="spamMessage" style="color: #c44; text-align: center; margin-top: 10px; display: none;"></div>
 
     <!-- СПИСОК ЗАКАЗОВ -->
     <h3 style="margin-top: 30px; color:#4e3927;">📋 Мои заказы</h3>
@@ -125,7 +130,7 @@
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     // ---------- СОСТОЯНИЕ ----------
-    let currentUser = null; // { id, name, surname }
+    let currentUser = null;
     let selectedTariff = 100;
     let currentChatOrderId = null;
     let ordersSubscription = null;
@@ -149,12 +154,14 @@
     const orderDesc = document.getElementById('orderDesc');
     const sendOrderBtn = document.getElementById('sendOrderBtn');
     const orderMessage = document.getElementById('orderMessage');
+    const spamMessage = document.getElementById('spamMessage');
     const ordersList = document.getElementById('ordersList');
     const chatPanel = document.getElementById('chatPanel');
     const chatMessages = document.getElementById('chatMessages');
     const chatInput = document.getElementById('chatInput');
     const sendChatBtn = document.getElementById('sendChatBtn');
     const closeChatBtn = document.getElementById('closeChatBtn');
+    const honeypot = document.getElementById('honeypot');
 
     // ---------- ФУНКЦИИ ----------
     function showGreeting(name) {
@@ -165,10 +172,19 @@
     }
 
     async function loginUser(name, surname) {
-      // Создаём или получаем пользователя
-      const { data: existing, error: selectError } = await supabase
+      // Проверка блокировки
+      const { data: blocked } = await supabase
+        .from('blocked_users')
+        .select('id')
+        .eq('user_name', name)
+        .maybeSingle();
+      if (blocked) {
+        loginError.textContent = '⛔ Ваш аккаунт заблокирован.';
+        return false;
+      }
+
+      const { data: existing } = await supabase
         .from('users').select('*').eq('name', name).maybeSingle();
-      if (selectError) { console.error(selectError); return false; }
       
       let user = existing;
       if (!user) {
@@ -307,7 +323,7 @@
       if (pass !== SECRET_PASSWORD) { loginError.textContent = '❌ Неверный пароль'; return; }
       loginError.textContent = '';
       const success = await loginUser(name, surname);
-      if (!success) loginError.textContent = 'Ошибка соединения с базой';
+      if (!success) loginError.textContent = 'Ошибка входа или аккаунт заблокирован';
     });
 
     loginPassword.addEventListener('keypress', (e) => { if (e.key === 'Enter') loginBtn.click(); });
@@ -322,18 +338,63 @@
 
     sendOrderBtn.addEventListener('click', async () => {
       if (!currentUser) return;
+      
+      // Honeypot
+      if (honeypot.value !== '') {
+        console.log('Spam blocked');
+        return;
+      }
+      
       const desc = orderDesc.value.trim();
-      if (!desc) { orderMessage.textContent = '❌ Напиши что заказать'; orderMessage.style.color = '#c44'; return; }
+      if (!desc) {
+        orderMessage.textContent = '❌ Напиши что заказать';
+        orderMessage.style.color = '#c44';
+        return;
+      }
+      
+      // Проверка лимита 3 заказа за 10 минут
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data: recent } = await supabase
+        .from('rate_limits')
+        .select('id')
+        .eq('user_name', currentUser.name)
+        .eq('action_type', 'order')
+        .gte('created_at', tenMinutesAgo);
+      
+      if (recent && recent.length >= 3) {
+        spamMessage.textContent = '⏳ Слишком много заказов. Подожди 10 минут.';
+        spamMessage.style.display = 'block';
+        orderMessage.textContent = '';
+        return;
+      }
+      spamMessage.style.display = 'none';
+      
       sendOrderBtn.disabled = true;
+      sendOrderBtn.textContent = '📤 Отправляю...';
+      
+      await supabase.from('rate_limits').insert({
+        user_name: currentUser.name,
+        action_type: 'order'
+      });
+      
       const { error } = await supabase.from('orders').insert({
         user_id: currentUser.id,
         description: desc,
         tariff: selectedTariff,
         status: 'pending'
       });
-      if (error) { orderMessage.textContent = '❌ Ошибка создания заказа'; orderMessage.style.color = '#c44'; }
-      else { orderMessage.textContent = '✅ Заказ создан! Ожидай ответа'; orderMessage.style.color = '#2e7d32'; orderDesc.value = ''; }
+      
+      if (error) {
+        orderMessage.textContent = '❌ Ошибка создания заказа';
+        orderMessage.style.color = '#c44';
+      } else {
+        orderMessage.textContent = '✅ Заказ создан! Ожидай ответа';
+        orderMessage.style.color = '#2e7d32';
+        orderDesc.value = '';
+        honeypot.value = '';
+      }
       sendOrderBtn.disabled = false;
+      sendOrderBtn.textContent = '🚀 Отправить заказ';
     });
 
     userIconBtn.addEventListener('click', (e) => { e.stopPropagation(); profilePopup.classList.toggle('show'); });
@@ -343,7 +404,7 @@
     sendChatBtn.addEventListener('click', () => sendMessage(chatInput.value));
     chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(chatInput.value); });
 
-    // Автовход если был сохранён userId (упрощённо)
+    // Автовход
     const savedUserId = localStorage.getItem('coconutUserId');
     const savedUserName = localStorage.getItem('coconutUserName');
     if (savedUserId && savedUserName) {
