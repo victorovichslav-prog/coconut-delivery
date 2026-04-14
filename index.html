@@ -135,8 +135,9 @@
     let currentChatOrderId = null;
     let ordersSubscription = null;
     let messagesSubscription = null;
+    let blockSubscription = null;   // <-- ДЛЯ МГНОВЕННОЙ БЛОКИРОВКИ
 
-    // DOM
+    // DOM элементы
     const loginScreen = document.getElementById('loginScreen');
     const mainScreen = document.getElementById('mainScreen');
     const loginBtn = document.getElementById('loginBtn');
@@ -171,20 +172,49 @@
       fullscreenGreeting.style.animation = 'fadeOut 0.5s ease 2s forwards';
     }
 
+    // Подписка на Realtime‑бан
+    function subscribeToBlock() {
+      if (!currentUser) return;
+      if (blockSubscription) {
+        supabase.removeChannel(blockSubscription);
+      }
+      blockSubscription = supabase
+        .channel('blocked-check')
+        .on('postgres_changes', 
+          { event: 'INSERT', schema: 'public', table: 'blocked_users', filter: `user_name=eq.${currentUser.name}` },
+          (payload) => {
+            alert('⛔ Ваш аккаунт был заблокирован.');
+            logout();
+          }
+        )
+        .subscribe();
+    }
+
     async function loginUser(name, surname) {
-      // Проверка блокировки
-      const { data: blocked } = await supabase
+      console.log('🔐 Попытка входа:', name);
+      
+      // Проверка блокировки (игнорируем регистр)
+      const { data: blocked, error: blockError } = await supabase
         .from('blocked_users')
         .select('id')
-        .eq('user_name', name)
+        .ilike('user_name', name)
         .maybeSingle();
+      
+      if (blockError) {
+        console.error('Ошибка проверки блокировки:', blockError);
+        loginError.textContent = 'Ошибка проверки доступа';
+        return false;
+      }
+      
       if (blocked) {
+        console.warn('⛔ Пользователь заблокирован:', name);
         loginError.textContent = '⛔ Ваш аккаунт заблокирован.';
         return false;
       }
-
+      
+      // Получаем или создаём пользователя
       const { data: existing } = await supabase
-        .from('users').select('*').eq('name', name).maybeSingle();
+        .from('users').select('*').ilike('name', name).maybeSingle();
       
       let user = existing;
       if (!user) {
@@ -198,6 +228,9 @@
       localStorage.setItem('coconutUserId', user.id);
       localStorage.setItem('coconutUserName', user.name);
       
+      // Подписываемся на мгновенный бан
+      subscribeToBlock();
+      
       showGreeting(user.name);
       loginScreen.style.display = 'none';
       mainScreen.style.display = 'block';
@@ -206,6 +239,7 @@
       
       loadOrders();
       subscribeToOrders();
+      console.log('✅ Вход успешен:', user.name);
       return true;
     }
 
@@ -215,6 +249,8 @@
       localStorage.removeItem('coconutUserName');
       if (ordersSubscription) supabase.removeChannel(ordersSubscription);
       if (messagesSubscription) supabase.removeChannel(messagesSubscription);
+      if (blockSubscription) supabase.removeChannel(blockSubscription);
+      blockSubscription = null;
       loginScreen.style.display = 'block';
       mainScreen.style.display = 'none';
       profilePopup.classList.remove('show');
@@ -404,14 +440,28 @@
     sendChatBtn.addEventListener('click', () => sendMessage(chatInput.value));
     chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(chatInput.value); });
 
-    // Автовход
+    // Автовход с проверкой блокировки и подпиской
     const savedUserId = localStorage.getItem('coconutUserId');
     const savedUserName = localStorage.getItem('coconutUserName');
     if (savedUserId && savedUserName) {
       supabase.from('users').select('*').eq('id', savedUserId).maybeSingle().then(({ data }) => {
-        if (data) { currentUser = data; loginScreen.style.display = 'none'; mainScreen.style.display = 'block';
-          userGreeting.textContent = `🥥 Привет, ${data.name}!`; profileName.textContent = `${data.name} ${data.surname || ''}`;
-          loadOrders(); subscribeToOrders();
+        if (data) { 
+          currentUser = data;
+          // Проверяем, не забанен ли уже
+          supabase.from('blocked_users').select('id').ilike('user_name', data.name).maybeSingle().then(({ data: blocked }) => {
+            if (blocked) {
+              alert('⛔ Ваш аккаунт был заблокирован.');
+              logout();
+              return;
+            }
+            loginScreen.style.display = 'none';
+            mainScreen.style.display = 'block';
+            userGreeting.textContent = `🥥 Привет, ${data.name}!`;
+            profileName.textContent = `${data.name} ${data.surname || ''}`;
+            loadOrders();
+            subscribeToOrders();
+            subscribeToBlock();   // ← важно: подписаться на бан
+          });
         }
       });
     }
