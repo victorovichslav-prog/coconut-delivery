@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Кокос Деливери 🥥</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    body { background: #f7f3e9; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 12px; }
+    .app { max-width: 520px; width: 100%; background: white; border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.05); border: 1px solid #e9dccd; overflow: hidden; }
+    .screen { padding: 24px 20px 30px; }
+    .logo { font-size: 28px; font-weight: 700; margin-bottom: 20px; color: #5c3f2b; }
+    .logo span:first-child { color: #6b4f3c; } .logo span:last-child { color: #d4a373; }
+    .input-group { margin-bottom: 18px; }
+    .input-group label { display: block; font-weight: 500; color: #5c4432; margin-bottom: 6px; }
+    .input-group input { width: 100%; padding: 16px; font-size: 16px; border: 2px solid #ddd2c4; border-radius: 24px; outline: none; background: white; }
+    .input-group input:focus { border-color: #b4845c; }
+    .tariff-buttons { display: flex; gap: 8px; margin: 20px 0; flex-wrap: wrap; }
+    .tariff-btn { flex: 1; background: #f3ede5; border: 2px solid #dacbbc; border-radius: 40px; padding: 14px 0; font-weight: bold; cursor: pointer; text-align: center; user-select: none; }
+    .tariff-btn.active { background: #6b4f3c; border-color: #6b4f3c; color: white; }
+    .order-textarea { width: 100%; padding: 18px; border: 2px solid #ddd2c4; border-radius: 28px; resize: vertical; margin-bottom: 20px; }
+    .btn { background: #3f2e1f; color: white; border: none; font-weight: bold; font-size: 20px; padding: 16px; border-radius: 40px; width: 100%; cursor: pointer; box-shadow: 0 6px 0 #241b13; transition: 0.1s; }
+    .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #241b13; }
+    .btn:disabled { opacity: 0.6; transform: none; box-shadow: 0 6px 0 #241b13; }
+    .success-msg { text-align: center; color: #2e7d32; margin-top: 16px; font-weight: 500; }
+    .error-msg { color: #c44; margin: 10px 0; }
+    .greeting-fullscreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #efe2d1; display: flex; align-items: center; justify-content: center; font-size: clamp(2.5rem, 15vw, 5rem); font-weight: 800; text-transform: uppercase; color: #5c3f2b; text-shadow: 6px 6px 0 #e3c9b1; z-index: 100; animation: fadeOut 0.5s ease 2s forwards; pointer-events: none; }
+    @keyframes fadeOut { 0% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .user-icon { background: #f1e9dd; width: 48px; height: 48px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border: none; }
+    .orders-list { list-style: none; padding: 0; margin-top: 20px; }
+    .order-item { background: #faf6f0; padding: 16px; border-radius: 24px; margin-bottom: 12px; border-left: 8px solid #d4a373; }
+    .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .order-status { font-size: 14px; padding: 4px 12px; border-radius: 30px; background: #e9dacb; }
+    .order-status.pending { background: #fff3cd; color: #856404; }
+    .order-status.accepted { background: #d4edda; color: #155724; }
+    .order-status.rejected { background: #f8d7da; color: #721c24; }
+    .chat-link { color: #b4845c; font-weight: 600; cursor: pointer; text-decoration: underline; }
+    .chat-panel { margin-top: 20px; border-top: 2px solid #e9dccd; padding-top: 20px; }
+    .chat-messages { max-height: 250px; overflow-y: auto; background: #faf6f0; border-radius: 20px; padding: 15px; margin-bottom: 15px; }
+    .chat-msg { margin-bottom: 12px; }
+    .chat-msg.user { text-align: right; }
+    .chat-msg.owner { text-align: left; }
+    .chat-msg span { display: inline-block; padding: 10px 16px; border-radius: 24px; max-width: 80%; }
+    .chat-msg.user span { background: #d4a373; color: white; }
+    .chat-msg.owner span { background: #e9dacb; color: #3f2e1f; }
+    .chat-input { display: flex; gap: 8px; }
+    .chat-input input { flex: 1; padding: 14px; border: 2px solid #ddd2c4; border-radius: 30px; }
+    .chat-input button { background: #6b4f3c; color: white; border: none; border-radius: 30px; padding: 0 20px; font-weight: bold; }
+    .profile-popup { position: absolute; top: 70px; right: 20px; background: white; border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 20px; display: none; border: 1px solid #e9dccd; z-index: 50; }
+    .profile-popup.show { display: block; }
+    .logout-btn { background: #eee4da; border: none; padding: 12px; border-radius: 40px; width: 100%; font-weight: 600; cursor: pointer; }
+    .back-btn { background: none; border: none; color: #b4845c; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="app" id="appContainer">
+  <!-- ЭКРАН ВХОДА -->
+  <div id="loginScreen" class="screen">
+    <div class="logo"><span>КОКОС</span><span>ДЕЛИВЕРИ</span></div>
+    <div class="input-group"><label>Твоё имя</label><input type="text" id="loginName" placeholder="Тимофей"></div>
+    <div class="input-group"><label>Фамилия (необязательно)</label><input type="text" id="loginSurname" placeholder=""></div>
+    <div class="input-group"><label>Секретный пароль</label><input type="password" id="loginPassword" placeholder="••••••"></div>
+    <button class="btn" id="loginBtn">Войти</button>
+    <div id="loginError" class="error-msg"></div>
+    <p style="margin-top: 20px; color: #7f6b58;">Пароль знают только свои 🥥</p>
+  </div>
+
+  <!-- ГЛАВНЫЙ ЭКРАН (скрыт до входа) -->
+  <div id="mainScreen" class="screen" style="display: none;">
+    <div class="header">
+      <div class="logo"><span>КОКОС</span><span>ДЕЛИВЕРИ</span></div>
+      <button class="user-icon" id="userIconBtn">👤</button>
+    </div>
+    <div id="userGreeting" style="margin-bottom: 16px; font-size: 20px; font-weight: 600; color: #5c3f2b;"></div>
+    
+    <!-- ФОРМА ЗАКАЗА -->
+    <label style="font-weight:500; color:#5c4432;">Выбери вес</label>
+    <div class="tariff-buttons">
+      <div class="tariff-btn" data-tariff="25">до 3 кг · 25₽</div>
+      <div class="tariff-btn" data-tariff="50">3–5 кг · 50₽</div>
+      <div class="tariff-btn active" data-tariff="100">5+ кг · 100₽</div>
+    </div>
+    <textarea id="orderDesc" class="order-textarea" rows="3" placeholder="Что заказать и куда доставить?"></textarea>
+    <button class="btn" id="sendOrderBtn">🚀 Отправить заказ</button>
+    <div id="orderMessage" class="success-msg"></div>
+
+    <!-- СПИСОК ЗАКАЗОВ -->
+    <h3 style="margin-top: 30px; color:#4e3927;">📋 Мои заказы</h3>
+    <ul class="orders-list" id="ordersList"><li style="color:#a28e7a; text-align:center;">Загрузка...</li></ul>
+
+    <!-- ЧАТ (скрыт по умолчанию) -->
+    <div id="chatPanel" class="chat-panel" style="display: none;">
+      <button class="back-btn" id="closeChatBtn">← Назад к заказам</button>
+      <h4>💬 Чат по заказу</h4>
+      <div id="chatMessages" class="chat-messages"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Напиши сообщение...">
+        <button id="sendChatBtn">➤</button>
+      </div>
+    </div>
+
+    <!-- Попап профиля -->
+    <div class="profile-popup" id="profilePopup">
+      <div style="font-weight:bold; font-size:18px; margin-bottom:10px;" id="profileName"></div>
+      <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
+    </div>
+  </div>
+
+  <!-- ПОЛНОЭКРАННОЕ ПРИВЕТСТВИЕ -->
+  <div id="fullscreenGreeting" class="greeting-fullscreen"></div>
+</div>
+
+<script>
+  (function(){
+    // ---------- НАСТРОЙКИ (ЗАМЕНИ НА СВОИ) ----------
+    const SUPABASE_URL = 'https://owoksgyuvgvdhqrqnuwf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93b2tzZ3l1dmd2ZGhxcnFudXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMDQ5MTQsImV4cCI6MjA5MTY4MDkxNH0.zhZWb041DDu7IH3_9_FC4cCqYerWz_NXUil5o1jvnVg';
+    const SECRET_PASSWORD = '135246';
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // ---------- СОСТОЯНИЕ ----------
+    let currentUser = null; // { id, name, surname }
+    let selectedTariff = 100;
+    let currentChatOrderId = null;
+    let ordersSubscription = null;
+    let messagesSubscription = null;
+
+    // DOM
+    const loginScreen = document.getElementById('loginScreen');
+    const mainScreen = document.getElementById('mainScreen');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginName = document.getElementById('loginName');
+    const loginSurname = document.getElementById('loginSurname');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginError = document.getElementById('loginError');
+    const userGreeting = document.getElementById('userGreeting');
+    const userIconBtn = document.getElementById('userIconBtn');
+    const profilePopup = document.getElementById('profilePopup');
+    const profileName = document.getElementById('profileName');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const fullscreenGreeting = document.getElementById('fullscreenGreeting');
+    const tariffBtns = document.querySelectorAll('.tariff-btn');
+    const orderDesc = document.getElementById('orderDesc');
+    const sendOrderBtn = document.getElementById('sendOrderBtn');
+    const orderMessage = document.getElementById('orderMessage');
+    const ordersList = document.getElementById('ordersList');
+    const chatPanel = document.getElementById('chatPanel');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendChatBtn = document.getElementById('sendChatBtn');
+    const closeChatBtn = document.getElementById('closeChatBtn');
+
+    // ---------- ФУНКЦИИ ----------
+    function showGreeting(name) {
+      fullscreenGreeting.textContent = `ПРИВЕТ, ${name.toUpperCase()}`;
+      fullscreenGreeting.style.animation = 'none';
+      fullscreenGreeting.offsetHeight;
+      fullscreenGreeting.style.animation = 'fadeOut 0.5s ease 2s forwards';
+    }
+
+    async function loginUser(name, surname) {
+      // Создаём или получаем пользователя
+      const { data: existing, error: selectError } = await supabase
+        .from('users').select('*').eq('name', name).maybeSingle();
+      if (selectError) { console.error(selectError); return false; }
+      
+      let user = existing;
+      if (!user) {
+        const { data: newUser, error: insertError } = await supabase
+          .from('users').insert({ name, surname: surname || null }).select().single();
+        if (insertError) { console.error(insertError); return false; }
+        user = newUser;
+      }
+      
+      currentUser = user;
+      localStorage.setItem('coconutUserId', user.id);
+      localStorage.setItem('coconutUserName', user.name);
+      
+      showGreeting(user.name);
+      loginScreen.style.display = 'none';
+      mainScreen.style.display = 'block';
+      userGreeting.textContent = `🥥 Привет, ${user.name}!`;
+      profileName.textContent = `${user.name} ${user.surname || ''}`;
+      
+      loadOrders();
+      subscribeToOrders();
+      return true;
+    }
+
+    function logout() {
+      currentUser = null;
+      localStorage.removeItem('coconutUserId');
+      localStorage.removeItem('coconutUserName');
+      if (ordersSubscription) supabase.removeChannel(ordersSubscription);
+      if (messagesSubscription) supabase.removeChannel(messagesSubscription);
+      loginScreen.style.display = 'block';
+      mainScreen.style.display = 'none';
+      profilePopup.classList.remove('show');
+      loginPassword.value = '';
+    }
+
+    async function loadOrders() {
+      if (!currentUser) return;
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+      if (error) { console.error(error); return; }
+      renderOrders(data || []);
+    }
+
+    function renderOrders(orders) {
+      if (orders.length === 0) {
+        ordersList.innerHTML = '<li style="color:#a28e7a; text-align:center;">Пока заказов нет</li>';
+        return;
+      }
+      let html = '';
+      orders.forEach(order => {
+        let tariffText = order.tariff === 25 ? 'до 3 кг · 25₽' : (order.tariff === 50 ? '3–5 кг · 50₽' : '5+ кг · 100₽');
+        let statusClass = order.status === 'pending' ? 'pending' : (order.status === 'accepted' ? 'accepted' : 'rejected');
+        let statusText = order.status === 'pending' ? '🕒 Ожидает' : (order.status === 'accepted' ? '✅ Принят' : '❌ Отклонён');
+        html += `<li class="order-item">
+          <div class="order-header">
+            <span><strong>${tariffText}</strong></span>
+            <span class="order-status ${statusClass}">${statusText}</span>
+          </div>
+          <div style="margin-bottom:8px;">${order.description}</div>
+          <span class="chat-link" data-order-id="${order.id}">💬 Чат</span>
+        </li>`;
+      });
+      ordersList.innerHTML = html;
+      document.querySelectorAll('.chat-link').forEach(link => {
+        link.addEventListener('click', (e) => openChat(e.target.dataset.orderId));
+      });
+    }
+
+    async function subscribeToOrders() {
+      if (!currentUser) return;
+      if (ordersSubscription) supabase.removeChannel(ordersSubscription);
+      ordersSubscription = supabase
+        .channel('orders-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${currentUser.id}` }, () => loadOrders())
+        .subscribe();
+    }
+
+    async function openChat(orderId) {
+      currentChatOrderId = orderId;
+      chatPanel.style.display = 'block';
+      ordersList.style.display = 'none';
+      document.querySelector('h3').style.display = 'none';
+      await loadMessages();
+      if (messagesSubscription) supabase.removeChannel(messagesSubscription);
+      messagesSubscription = supabase
+        .channel(`messages-${orderId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `order_id=eq.${orderId}` }, () => loadMessages())
+        .subscribe();
+    }
+
+    async function loadMessages() {
+      if (!currentChatOrderId) return;
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('order_id', currentChatOrderId)
+        .order('created_at', { ascending: true });
+      if (error) { console.error(error); return; }
+      let html = '';
+      data.forEach(msg => {
+        const cls = msg.sender_type === 'user' ? 'user' : 'owner';
+        html += `<div class="chat-msg ${cls}"><span>${msg.text}</span></div>`;
+      });
+      chatMessages.innerHTML = html || '<div style="color:#999; text-align:center;">Пока сообщений нет</div>';
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendMessage(text) {
+      if (!currentChatOrderId || !text.trim()) return;
+      await supabase.from('messages').insert({
+        order_id: currentChatOrderId,
+        sender_type: 'user',
+        text: text.trim()
+      });
+      chatInput.value = '';
+    }
+
+    function closeChat() {
+      chatPanel.style.display = 'none';
+      ordersList.style.display = 'block';
+      document.querySelector('h3').style.display = 'block';
+      currentChatOrderId = null;
+      if (messagesSubscription) supabase.removeChannel(messagesSubscription);
+    }
+
+    // ---------- ОБРАБОТЧИКИ ----------
+    loginBtn.addEventListener('click', async () => {
+      const name = loginName.value.trim();
+      const surname = loginSurname.value.trim();
+      const pass = loginPassword.value.trim();
+      if (!name) { loginError.textContent = 'Введи имя'; return; }
+      if (pass !== SECRET_PASSWORD) { loginError.textContent = '❌ Неверный пароль'; return; }
+      loginError.textContent = '';
+      const success = await loginUser(name, surname);
+      if (!success) loginError.textContent = 'Ошибка соединения с базой';
+    });
+
+    loginPassword.addEventListener('keypress', (e) => { if (e.key === 'Enter') loginBtn.click(); });
+
+    tariffBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        tariffBtns.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        selectedTariff = parseInt(this.dataset.tariff);
+      });
+    });
+
+    sendOrderBtn.addEventListener('click', async () => {
+      if (!currentUser) return;
+      const desc = orderDesc.value.trim();
+      if (!desc) { orderMessage.textContent = '❌ Напиши что заказать'; orderMessage.style.color = '#c44'; return; }
+      sendOrderBtn.disabled = true;
+      const { error } = await supabase.from('orders').insert({
+        user_id: currentUser.id,
+        description: desc,
+        tariff: selectedTariff,
+        status: 'pending'
+      });
+      if (error) { orderMessage.textContent = '❌ Ошибка создания заказа'; orderMessage.style.color = '#c44'; }
+      else { orderMessage.textContent = '✅ Заказ создан! Ожидай ответа'; orderMessage.style.color = '#2e7d32'; orderDesc.value = ''; }
+      sendOrderBtn.disabled = false;
+    });
+
+    userIconBtn.addEventListener('click', (e) => { e.stopPropagation(); profilePopup.classList.toggle('show'); });
+    document.addEventListener('click', (e) => { if (!userIconBtn.contains(e.target) && !profilePopup.contains(e.target)) profilePopup.classList.remove('show'); });
+    logoutBtn.addEventListener('click', logout);
+    closeChatBtn.addEventListener('click', closeChat);
+    sendChatBtn.addEventListener('click', () => sendMessage(chatInput.value));
+    chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(chatInput.value); });
+
+    // Автовход если был сохранён userId (упрощённо)
+    const savedUserId = localStorage.getItem('coconutUserId');
+    const savedUserName = localStorage.getItem('coconutUserName');
+    if (savedUserId && savedUserName) {
+      supabase.from('users').select('*').eq('id', savedUserId).maybeSingle().then(({ data }) => {
+        if (data) { currentUser = data; loginScreen.style.display = 'none'; mainScreen.style.display = 'block';
+          userGreeting.textContent = `🥥 Привет, ${data.name}!`; profileName.textContent = `${data.name} ${data.surname || ''}`;
+          loadOrders(); subscribeToOrders();
+        }
+      });
+    }
+  })();
+</script>
+</body>
+</html>
