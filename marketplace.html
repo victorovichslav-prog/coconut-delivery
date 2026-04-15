@@ -30,6 +30,12 @@
     .add-form { background: white; border-radius: 32px; padding: 24px; max-width: 600px; margin: 0 auto; }
     .photo-preview { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .photo-preview img { width: 80px; height: 80px; object-fit: cover; border-radius: 12px; border: 2px solid #d4a373; }
+    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal.show { display: flex; }
+    .modal-content { background: white; max-width: 400px; width: 90%; border-radius: 32px; padding: 24px; }
+    .profile-popup { position: absolute; top: 70px; right: 20px; background: white; border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 20px; display: none; border: 1px solid #e9dccd; z-index: 50; }
+    .profile-popup.show { display: block; }
+    .logout-btn { background: #eee4da; border: none; padding: 12px; border-radius: 40px; width: 100%; font-weight: 600; cursor: pointer; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -44,28 +50,26 @@
       <button class="nav-btn" data-tab="profile">👤 Профиль</button>
       <button class="nav-btn" data-tab="add">➕ Добавить</button>
     </div>
-    <button class="user-icon" id="userIconBtn">👤</button>
+    <div id="authArea">
+      <button class="user-icon" id="loginBtn" style="display: flex;">👤</button>
+      <button class="user-icon" id="userIconBtn" style="display: none;">👤</button>
+    </div>
   </div>
 
-  <!-- КОНТЕНТ ВКЛАДОК -->
+  <!-- ВКЛАДКИ -->
   <div class="content">
-    <!-- Главная (каталог) -->
     <div id="home" class="tab active">
       <h2 style="color:#4e3927; margin-bottom:20px;">Все товары</h2>
       <div id="productsContainer" class="products-grid">
-        <p style="color:#7f6b58;">Загрузка товаров...</p>
+        <p style="color:#7f6b58;">Войдите, чтобы увидеть товары</p>
       </div>
     </div>
-
-    <!-- Избранное -->
     <div id="favorites" class="tab">
       <h2 style="color:#4e3927; margin-bottom:20px;">Избранное</h2>
       <div id="favoritesContainer" class="products-grid">
         <p style="color:#7f6b58;">Вы пока ничего не добавили в избранное</p>
       </div>
     </div>
-
-    <!-- Профиль -->
     <div id="profile" class="tab">
       <h2 style="color:#4e3927; margin-bottom:20px;">Мой профиль</h2>
       <div id="profileInfo" style="background:white; border-radius:24px; padding:20px; margin-bottom:24px;">
@@ -80,67 +84,201 @@
         <p style="color:#7f6b58;">Загрузка...</p>
       </div>
     </div>
-
-    <!-- Добавить товар -->
     <div id="add" class="tab">
       <div class="add-form">
         <h2 style="color:#4e3927; margin-bottom:24px;">➕ Добавить товар</h2>
-        <div class="input-group">
-          <label>Название</label>
-          <input type="text" id="productTitle" placeholder="Кокосовый торт">
-        </div>
-        <div class="input-group">
-          <label>Описание</label>
-          <textarea id="productDesc" rows="3" placeholder="Подробное описание товара"></textarea>
-        </div>
-        <div class="input-group">
-          <label>Характеристики</label>
-          <input type="text" id="productSpecs" placeholder="Вес: 1 кг, Размер: 20 см">
-        </div>
-        <div class="input-group">
-          <label>Цена (₽)</label>
-          <input type="number" id="productPrice" placeholder="350">
-        </div>
-        <div class="input-group">
-          <label>Откуда отправка</label>
-          <input type="text" id="productLocation" placeholder="г. Москва, ул. Пальмовая, 5">
-        </div>
-        <div class="input-group">
-          <label>Фото (до 5 шт.)</label>
-          <input type="file" id="productPhotos" accept="image/*" multiple>
-          <div id="photoPreview" class="photo-preview"></div>
-        </div>
-        <div class="agreement" style="display:flex; align-items:center; gap:10px; margin:20px 0;">
-          <input type="checkbox" id="agreeCheckbox">
-          <label for="agreeCheckbox">Я соглашаюсь с лицензионным соглашением Кокос</label>
-        </div>
+        <div class="input-group"><label>Название</label><input type="text" id="productTitle" placeholder="Кокосовый торт"></div>
+        <div class="input-group"><label>Описание</label><textarea id="productDesc" rows="3" placeholder="Подробное описание товара"></textarea></div>
+        <div class="input-group"><label>Характеристики</label><input type="text" id="productSpecs" placeholder="Вес: 1 кг, Размер: 20 см"></div>
+        <div class="input-group"><label>Цена (₽)</label><input type="number" id="productPrice" placeholder="350"></div>
+        <div class="input-group"><label>Откуда отправка</label><input type="text" id="productLocation" placeholder="г. Москва, ул. Пальмовая, 5"></div>
+        <div class="input-group"><label>Фото (до 5 шт.)</label><input type="file" id="productPhotos" accept="image/*" multiple><div id="photoPreview" class="photo-preview"></div></div>
+        <div style="display:flex; align-items:center; gap:10px; margin:20px 0;"><input type="checkbox" id="agreeCheckbox"><label for="agreeCheckbox">Я соглашаюсь с лицензионным соглашением Кокос</label></div>
         <button class="btn" id="submitProductBtn">🚀 Отправить на модерацию</button>
         <div id="addMessage" style="margin-top:16px;"></div>
       </div>
     </div>
   </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО ВХОДА -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content">
+      <h2 style="color:#4e3927; margin-bottom:20px;">Вход в Кокос Маркет</h2>
+      <div id="emailStep">
+        <div class="input-group"><label>Твой Email</label><input type="email" id="loginEmail" placeholder="friend@example.com"></div>
+        <div class="input-group"><label>Твоё имя</label><input type="text" id="loginNameInput" placeholder="Тимофей"></div>
+        <button class="btn" id="sendCodeBtn">📧 Получить код</button>
+        <div id="emailMessage" style="margin-top:12px;"></div>
+      </div>
+      <div id="codeStep" style="display:none;">
+        <div class="input-group"><label>Код из письма (6 цифр)</label><input type="text" id="loginCode" placeholder="000000" maxlength="6"></div>
+        <button class="btn" id="verifyCodeBtn">✅ Подтвердить</button>
+        <div id="codeMessage" style="margin-top:12px;"></div>
+        <p style="margin-top:20px; cursor:pointer;" id="backToEmailBtn">← Назад</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ПОПАП ПРОФИЛЯ -->
+  <div class="profile-popup" id="profilePopup">
+    <div style="font-weight:bold; font-size:18px; margin-bottom:10px;" id="profileName"></div>
+    <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
+  </div>
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://owoksgyuvgvdhqrqnuwf.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93b2tzZ3l1dmd2ZGhxcnFudXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMDQ5MTQsImV4cCI6MjA5MTY4MDkxNH0.zhZWb041DDu7IH3_9_FC4cCqYerWz_NXUil5o1jvnVg';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  (function(){
+    const SUPABASE_URL = 'https://owoksgyuvgvdhqrqnuwf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93b2tzZ3l1dmd2ZGhxcnFudXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMDQ5MTQsImV4cCI6MjA5MTY4MDkxNH0.zhZWb041DDu7IH3_9_FC4cCqYerWz_NXUil5o1jvnVg';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Переключение вкладок
-  const tabs = document.querySelectorAll('.tab');
-  const navBtns = document.querySelectorAll('.nav-btn');
-  navBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tabId = btn.dataset.tab;
-      navBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      tabs.forEach(t => t.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
+    let currentUser = null;
+    let currentEmail = '';
+    let pendingName = '';
+
+    // DOM элементы входа
+    const loginModal = document.getElementById('loginModal');
+    const loginBtn = document.getElementById('loginBtn');
+    const userIconBtn = document.getElementById('userIconBtn');
+    const emailStep = document.getElementById('emailStep');
+    const codeStep = document.getElementById('codeStep');
+    const loginEmail = document.getElementById('loginEmail');
+    const loginNameInput = document.getElementById('loginNameInput');
+    const sendCodeBtn = document.getElementById('sendCodeBtn');
+    const emailMessage = document.getElementById('emailMessage');
+    const loginCode = document.getElementById('loginCode');
+    const verifyCodeBtn = document.getElementById('verifyCodeBtn');
+    const codeMessage = document.getElementById('codeMessage');
+    const backToEmailBtn = document.getElementById('backToEmailBtn');
+    const profilePopup = document.getElementById('profilePopup');
+    const profileName = document.getElementById('profileName');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // Переключение вкладок
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
     });
-  });
 
-  // Заглушка для входа (позже добавим)
-  console.log('Маркетплейс загружен, Supabase готов');
+    // Показать модалку входа
+    loginBtn.addEventListener('click', () => {
+      loginModal.classList.add('show');
+      emailStep.style.display = 'block';
+      codeStep.style.display = 'none';
+    });
+
+    // Закрыть модалку по клику вне
+    loginModal.addEventListener('click', (e) => {
+      if (e.target === loginModal) loginModal.classList.remove('show');
+    });
+
+    // Отправка кода
+    sendCodeBtn.addEventListener('click', async () => {
+      const email = loginEmail.value.trim();
+      const name = loginNameInput.value.trim();
+      if (!email) { emailMessage.textContent = '❌ Введи почту'; return; }
+      if (!name) { emailMessage.textContent = '❌ Введи имя'; return; }
+      currentEmail = email;
+      pendingName = name;
+      emailMessage.textContent = '📤 Отправляю...';
+      sendCodeBtn.disabled = true;
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) {
+        emailMessage.textContent = `❌ ${error.message}`;
+        sendCodeBtn.disabled = false;
+      } else {
+        emailMessage.textContent = '✅ Код отправлен!';
+        emailStep.style.display = 'none';
+        codeStep.style.display = 'block';
+        sendCodeBtn.disabled = false;
+      }
+    });
+
+    // Подтверждение кода
+    verifyCodeBtn.addEventListener('click', async () => {
+      const code = loginCode.value.trim();
+      if (code.length !== 6) { codeMessage.textContent = '❌ Введи 6 цифр'; return; }
+      codeMessage.textContent = '🔄 Проверяю...';
+      verifyCodeBtn.disabled = true;
+      const { data, error } = await supabase.auth.verifyOtp({ email: currentEmail, token: code, type: 'email' });
+      if (error) {
+        codeMessage.textContent = `❌ ${error.message}`;
+        verifyCodeBtn.disabled = false;
+      } else {
+        const user = data.user;
+        if (user) {
+          let { data: dbUser } = await supabase.from('users').select('*').eq('email', user.email).maybeSingle();
+          if (!dbUser) {
+            const { data: newUser } = await supabase.from('users').insert({ name: pendingName, email: user.email }).select().single();
+            dbUser = newUser;
+          } else {
+            await supabase.from('users').update({ name: pendingName }).eq('id', dbUser.id);
+            dbUser.name = pendingName;
+          }
+          currentUser = dbUser;
+          localStorage.setItem('coconutUserId', dbUser.id);
+          localStorage.setItem('coconutUserName', dbUser.name);
+          // Обновить интерфейс
+          loginBtn.style.display = 'none';
+          userIconBtn.style.display = 'flex';
+          profileName.textContent = dbUser.name;
+          loginModal.classList.remove('show');
+          emailStep.style.display = 'block';
+          codeStep.style.display = 'none';
+          loginEmail.value = '';
+          loginNameInput.value = '';
+          loginCode.value = '';
+          // Загрузить данные для вкладок (будет в следующих шагах)
+        }
+      }
+    });
+
+    backToEmailBtn.addEventListener('click', () => {
+      emailStep.style.display = 'block';
+      codeStep.style.display = 'none';
+    });
+
+    // Иконка профиля (показать попап)
+    userIconBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      profilePopup.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!userIconBtn.contains(e.target) && !profilePopup.contains(e.target)) {
+        profilePopup.classList.remove('show');
+      }
+    });
+
+    // Выход
+    logoutBtn.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      currentUser = null;
+      localStorage.clear();
+      loginBtn.style.display = 'flex';
+      userIconBtn.style.display = 'none';
+      profilePopup.classList.remove('show');
+    });
+
+    // Автовход
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const user = session.user;
+        supabase.from('users').select('*').eq('email', user.email).maybeSingle().then(({ data: dbUser }) => {
+          if (dbUser) {
+            currentUser = dbUser;
+            loginBtn.style.display = 'none';
+            userIconBtn.style.display = 'flex';
+            profileName.textContent = dbUser.name;
+          }
+        });
+      }
+    });
+  })();
 </script>
 </body>
 </html>
