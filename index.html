@@ -13,12 +13,9 @@
     .logo span:first-child { color: #6b4f3c; } .logo span:last-child { color: #d4a373; }
     .input-group { margin-bottom: 18px; }
     .input-group label { display: block; font-weight: 500; color: #5c4432; margin-bottom: 6px; }
-    .input-group input { width: 100%; padding: 16px; font-size: 16px; border: 2px solid #ddd2c4; border-radius: 24px; outline: none; background: white; }
-    .input-group input:focus { border-color: #b4845c; }
-    .tariff-buttons { display: flex; gap: 8px; margin: 20px 0; flex-wrap: wrap; }
-    .tariff-btn { flex: 1; background: #f3ede5; border: 2px solid #dacbbc; border-radius: 40px; padding: 14px 0; font-weight: bold; cursor: pointer; text-align: center; user-select: none; }
-    .tariff-btn.active { background: #6b4f3c; border-color: #6b4f3c; color: white; }
-    .order-textarea { width: 100%; padding: 18px; border: 2px solid #ddd2c4; border-radius: 28px; resize: vertical; margin-bottom: 20px; }
+    .input-group input, .input-group textarea { width: 100%; padding: 16px; font-size: 16px; border: 2px solid #ddd2c4; border-radius: 24px; outline: none; background: white; }
+    .input-group textarea { resize: vertical; }
+    .input-group input:focus, .input-group textarea:focus { border-color: #b4845c; }
     .btn { background: #3f2e1f; color: white; border: none; font-weight: bold; font-size: 20px; padding: 16px; border-radius: 40px; width: 100%; cursor: pointer; box-shadow: 0 6px 0 #241b13; transition: 0.1s; }
     .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #241b13; }
     .btn:disabled { opacity: 0.6; transform: none; box-shadow: 0 6px 0 #241b13; }
@@ -51,16 +48,15 @@
     .profile-popup.show { display: block; }
     .logout-btn { background: #eee4da; border: none; padding: 12px; border-radius: 40px; width: 100%; font-weight: 600; cursor: pointer; }
     .back-btn { background: none; border: none; color: #b4845c; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
+    .order-preview { background: #f3ede5; padding: 16px; border-radius: 24px; margin-bottom: 20px; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app" id="appContainer">
-  <!-- ЭКРАН ВХОДА (Email + Имя сразу) -->
+  <!-- ЭКРАН ВХОДА (Email + Имя) -->
   <div id="loginScreen" class="screen">
     <div class="logo"><span>КОКОС</span><span>ДЕЛИВЕРИ</span></div>
-    
-    <!-- Шаг 1: Email и Имя -->
     <div id="emailStep">
       <div class="input-group">
         <label>Твой Email</label>
@@ -73,8 +69,6 @@
       <button class="btn" id="sendCodeBtn">📧 Получить код</button>
       <div id="emailMessage" style="margin-top: 12px; font-size: 14px;"></div>
     </div>
-    
-    <!-- Шаг 2: Код -->
     <div id="codeStep" style="display: none;">
       <div class="input-group">
         <label>Код из письма (6 цифр)</label>
@@ -84,49 +78,62 @@
       <div id="codeMessage" style="margin-top: 12px; font-size: 14px;"></div>
       <p style="margin-top: 20px; color: #7f6b58; cursor: pointer;" id="backToEmailBtn">← Назад</p>
     </div>
-    
     <div id="loginError" class="error-msg"></div>
     <p style="margin-top: 20px; color: #7f6b58;">Код придет на почту 🥥</p>
   </div>
 
-  <!-- ГЛАВНЫЙ ЭКРАН (без изменений) -->
+  <!-- ГЛАВНЫЙ ЭКРАН -->
   <div id="mainScreen" class="screen" style="display: none;">
     <div class="header">
       <div class="logo"><span>КОКОС</span><span>ДЕЛИВЕРИ</span></div>
       <button class="user-icon" id="userIconBtn">👤</button>
     </div>
     <div id="userGreeting" style="margin-bottom: 16px; font-size: 20px; font-weight: 600; color: #5c3f2b;"></div>
-    <div style="text-align: center; margin-bottom: 20px; font-size: 16px; color: #7f6b58; font-style: italic;">🚚 Перевозка товаров от точки А до точки Б</div>
-    
-    <label style="font-weight:500; color:#5c4432;">Выбери вес</label>
-    <div class="tariff-buttons">
-      <div class="tariff-btn" data-tariff="25">до 3 кг · 25₽</div>
-      <div class="tariff-btn" data-tariff="50">3–5 кг · 50₽</div>
-      <div class="tariff-btn active" data-tariff="100">5+ кг · 100₽</div>
+
+    <!-- ФОРМА ЗАКАЗА (показывается, если есть параметры ?items=...&price=...) -->
+    <div id="orderFormContainer" style="display: none;">
+      <div class="order-preview">
+        <h3 style="color: #4e3927; margin-bottom: 12px;">🧾 Ваш заказ</h3>
+        <div id="orderPreviewItems" style="margin-bottom: 8px; font-weight: 500;"></div>
+        <div id="orderPreviewPrice" style="font-size: 18px; font-weight: bold; color: #3f2e1f;"></div>
+      </div>
+      <div class="input-group">
+        <label>📍 Адрес доставки</label>
+        <textarea id="deliveryAddress" rows="2" placeholder="Улица, дом, квартира, подъезд..."></textarea>
+      </div>
+      <button class="btn" id="confirmOrderBtn">🚀 Подтвердить заказ</button>
+      <div id="orderMessage" class="success-msg"></div>
+      <div id="spamMessage" style="color: #c44; text-align: center; margin-top: 10px; display: none;"></div>
     </div>
-    <div style="opacity: 0; position: absolute; top: 0; left: 0; height: 0; width: 0; z-index: -1;">
-      <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
+
+    <!-- ЗАГЛУШКА, ЕСЛИ НЕТ ПАРАМЕТРОВ -->
+    <div id="emptyOrderPlaceholder" style="text-align: center; padding: 40px 20px; color: #7f6b58;">
+      🛒 Здесь появится ваш заказ после оформления в маркетплейсе.<br>
+      Перейдите в каталог и выберите товары.
     </div>
-    <textarea id="orderDesc" class="order-textarea" rows="3" placeholder="Что заказать и куда доставить?"></textarea>
-    <button class="btn" id="sendOrderBtn">🚀 Отправить заказ</button>
-    <div id="orderMessage" class="success-msg"></div>
-    <div id="spamMessage" style="color: #c44; text-align: center; margin-top: 10px; display: none;"></div>
 
     <h3 style="margin-top: 30px; color:#4e3927;">📋 Мои заказы</h3>
     <ul class="orders-list" id="ordersList"><li style="color:#a28e7a; text-align:center;">Загрузка...</li></ul>
 
+    <!-- ЧАТ -->
     <div id="chatPanel" class="chat-panel" style="display: none;">
       <button class="back-btn" id="closeChatBtn">← Назад к заказам</button>
       <h4>💬 Чат по заказу</h4>
       <div id="chatMessages" class="chat-messages"></div>
-      <div class="chat-input"><input type="text" id="chatInput" placeholder="Напиши сообщение..."><button id="sendChatBtn">➤</button></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Напиши сообщение...">
+        <button id="sendChatBtn">➤</button>
+      </div>
     </div>
 
+    <!-- ПРОФИЛЬ -->
     <div class="profile-popup" id="profilePopup">
       <div style="font-weight:bold; font-size:18px; margin-bottom:10px;" id="profileName"></div>
       <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
     </div>
   </div>
+
+  <!-- ПРИВЕТСТВИЕ -->
   <div id="fullscreenGreeting" class="greeting-fullscreen"></div>
 </div>
 
@@ -137,11 +144,11 @@
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     let currentUser = null;
-    let selectedTariff = 100;
     let currentChatOrderId = null;
     let ordersSubscription = null, messagesSubscription = null, blockSubscription = null;
     let currentEmail = '';
-    let pendingName = ''; // Имя, введённое на первом шаге
+    let pendingName = '';
+    let pendingOrder = null; // { items, price }
 
     // DOM
     const loginScreen = document.getElementById('loginScreen');
@@ -163,9 +170,12 @@
     const profileName = document.getElementById('profileName');
     const logoutBtn = document.getElementById('logoutBtn');
     const fullscreenGreeting = document.getElementById('fullscreenGreeting');
-    const tariffBtns = document.querySelectorAll('.tariff-btn');
-    const orderDesc = document.getElementById('orderDesc');
-    const sendOrderBtn = document.getElementById('sendOrderBtn');
+    const orderFormContainer = document.getElementById('orderFormContainer');
+    const emptyOrderPlaceholder = document.getElementById('emptyOrderPlaceholder');
+    const orderPreviewItems = document.getElementById('orderPreviewItems');
+    const orderPreviewPrice = document.getElementById('orderPreviewPrice');
+    const deliveryAddress = document.getElementById('deliveryAddress');
+    const confirmOrderBtn = document.getElementById('confirmOrderBtn');
     const orderMessage = document.getElementById('orderMessage');
     const spamMessage = document.getElementById('spamMessage');
     const ordersList = document.getElementById('ordersList');
@@ -205,7 +215,7 @@
       if (orders.length === 0) { ordersList.innerHTML = '<li style="color:#a28e7a; text-align:center;">Пока заказов нет</li>'; return; }
       let html = '';
       orders.forEach(order => {
-        let tariffText = order.tariff === 25 ? 'до 3 кг · 25₽' : (order.tariff === 50 ? '3–5 кг · 50₽' : '5+ кг · 100₽');
+        let tariffText = order.tariff ? (order.tariff === 25 ? 'до 3 кг · 25₽' : (order.tariff === 50 ? '3–5 кг · 50₽' : '5+ кг · 100₽')) : 'Доставка';
         let statusClass = order.status === 'pending' ? 'pending' : (order.status === 'accepted' ? 'accepted' : 'rejected');
         let statusText = order.status === 'pending' ? '🕒 Ожидает' : (order.status === 'accepted' ? '✅ Принят' : '❌ Отклонён');
         html += `<li class="order-item"><div class="order-header"><span><strong>${tariffText}</strong></span><span class="order-status ${statusClass}">${statusText}</span></div><div style="margin-bottom:8px;">${order.description}</div><span class="chat-link" data-order-id="${order.id}">💬 Чат</span></li>`;
@@ -269,6 +279,24 @@
       });
     }
 
+    // ----- ПАРСИМ ЗАКАЗ ИЗ URL -----
+    function parseOrderFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      const items = params.get('items');
+      const price = params.get('price');
+      if (items && price) {
+        pendingOrder = { items, price: parseInt(price) };
+        orderFormContainer.style.display = 'block';
+        emptyOrderPlaceholder.style.display = 'none';
+        orderPreviewItems.textContent = `Товары: ${items}`;
+        orderPreviewPrice.textContent = `Сумма: ${price} ₽`;
+      } else {
+        orderFormContainer.style.display = 'none';
+        emptyOrderPlaceholder.style.display = 'block';
+      }
+    }
+    parseOrderFromURL();
+
     // ----- ВХОД -----
     sendCodeBtn.addEventListener('click', async () => {
       const email = loginEmail.value.trim();
@@ -302,7 +330,6 @@
       } else {
         const user = data.user;
         if (!user) { verifyCodeBtn.disabled = false; return; }
-        // Проверка блокировки
         const { data: blocked } = await supabase.from('blocked_users').select('id').ilike('user_name', user.email).maybeSingle();
         if (blocked) {
           await supabase.auth.signOut();
@@ -311,15 +338,11 @@
           verifyCodeBtn.disabled = false; pendingName = '';
           return;
         }
-        // Создаём или получаем пользователя с указанным именем
-        const { data: existing } = await supabase.from('users').select('*').eq('email', user.email).maybeSingle();
-        let dbUser = existing;
+        let { data: dbUser } = await supabase.from('users').select('*').eq('email', user.email).maybeSingle();
         if (!dbUser) {
-          const { data: newUser, error: insertErr } = await supabase.from('users').insert({ name: pendingName, email: user.email }).select().single();
-          if (insertErr) { codeMessage.textContent = '❌ Ошибка создания'; verifyCodeBtn.disabled = false; return; }
+          const { data: newUser } = await supabase.from('users').insert({ name: pendingName, email: user.email }).select().single();
           dbUser = newUser;
         } else {
-          // Обновим имя на случай, если пользователь ввёл новое
           const { data: updated } = await supabase.from('users').update({ name: pendingName }).eq('id', dbUser.id).select().single();
           if (updated) dbUser = updated;
         }
@@ -343,30 +366,43 @@
       emailStep.style.display = 'block'; codeStep.style.display = 'none';
       loginCode.value = ''; codeMessage.textContent = '';
     });
-
     loginCode.addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyCodeBtn.click(); });
 
-    // ----- ЗАКАЗЫ (без изменений) -----
-    tariffBtns.forEach(btn => btn.addEventListener('click', function() {
-      tariffBtns.forEach(b => b.classList.remove('active')); this.classList.add('active');
-      selectedTariff = parseInt(this.dataset.tariff);
-    }));
-
-    sendOrderBtn.addEventListener('click', async () => {
+    // ----- ПОДТВЕРЖДЕНИЕ ЗАКАЗА -----
+    confirmOrderBtn.addEventListener('click', async () => {
       if (!currentUser) return;
-      if (honeypot.value !== '') return;
-      const desc = orderDesc.value.trim();
-      if (!desc) { orderMessage.textContent = '❌ Напиши что заказать'; orderMessage.style.color = '#c44'; return; }
+      if (!pendingOrder) { orderMessage.textContent = '❌ Нет данных о заказе'; orderMessage.style.color = '#c44'; return; }
+      const address = deliveryAddress.value.trim();
+      if (!address) { orderMessage.textContent = '❌ Укажите адрес доставки'; orderMessage.style.color = '#c44'; return; }
+      if (honeypot && honeypot.value !== '') return;
+      
       const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
       const { data: recent } = await supabase.from('rate_limits').select('id').eq('user_name', currentUser.name).eq('action_type', 'order').gte('created_at', tenMinutesAgo);
       if (recent && recent.length >= 3) { spamMessage.textContent = '⏳ Слишком много заказов. Подожди 10 минут.'; spamMessage.style.display = 'block'; return; }
       spamMessage.style.display = 'none';
-      sendOrderBtn.disabled = true; sendOrderBtn.textContent = '📤 Отправляю...';
+      
+      confirmOrderBtn.disabled = true; confirmOrderBtn.textContent = '📤 Отправляю...';
       await supabase.from('rate_limits').insert({ user_name: currentUser.name, action_type: 'order' });
-      const { error } = await supabase.from('orders').insert({ user_id: currentUser.id, description: desc, tariff: selectedTariff, status: 'pending' });
-      if (error) { orderMessage.textContent = '❌ Ошибка создания заказа'; orderMessage.style.color = '#c44'; }
-      else { orderMessage.textContent = '✅ Заказ создан! Ожидай ответа'; orderMessage.style.color = '#2e7d32'; orderDesc.value = ''; honeypot.value = ''; }
-      sendOrderBtn.disabled = false; sendOrderBtn.textContent = '🚀 Отправить заказ';
+      
+      const description = `${pendingOrder.items}\n📍 Адрес: ${address}`;
+      const { error } = await supabase.from('orders').insert({
+        user_id: currentUser.id,
+        description: description,
+        tariff: 0,
+        status: 'pending'
+      });
+      
+      if (error) {
+        orderMessage.textContent = '❌ Ошибка создания заказа'; orderMessage.style.color = '#c44';
+      } else {
+        orderMessage.textContent = '✅ Заказ оформлен! Ожидайте подтверждения.'; orderMessage.style.color = '#2e7d32';
+        deliveryAddress.value = '';
+        window.history.replaceState({}, document.title, window.location.pathname);
+        pendingOrder = null;
+        orderFormContainer.style.display = 'none';
+        emptyOrderPlaceholder.style.display = 'block';
+      }
+      confirmOrderBtn.disabled = false; confirmOrderBtn.textContent = '🚀 Подтвердить заказ';
     });
 
     userIconBtn.addEventListener('click', (e) => { e.stopPropagation(); profilePopup.classList.toggle('show'); });
@@ -389,6 +425,7 @@
               userGreeting.textContent = `🥥 Привет, ${dbUser.name}!`;
               profileName.textContent = dbUser.name;
               loadOrders(); subscribeToOrders(); subscribeToBlock();
+              parseOrderFromURL(); // повторно проверим параметры
             });
           }
         });
