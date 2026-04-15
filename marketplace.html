@@ -24,6 +24,7 @@
     .product-title { font-weight: 700; font-size: 18px; margin-bottom: 4px; color: #3f2e1f; }
     .product-price { font-weight: bold; color: #6b4f3c; margin-bottom: 8px; }
     .btn { background: #d4a373; color: white; border: none; padding: 12px 20px; border-radius: 40px; font-weight: bold; cursor: pointer; width: 100%; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .input-group { margin-bottom: 18px; }
     .input-group label { display: block; font-weight: 500; color: #5c4432; margin-bottom: 6px; }
     .input-group input, .input-group textarea { width: 100%; padding: 14px; border: 2px solid #ddd2c4; border-radius: 24px; outline: none; background: white; }
@@ -92,8 +93,15 @@
         <div class="input-group"><label>Характеристики</label><input type="text" id="productSpecs" placeholder="Вес: 1 кг, Размер: 20 см"></div>
         <div class="input-group"><label>Цена (₽)</label><input type="number" id="productPrice" placeholder="350"></div>
         <div class="input-group"><label>Откуда отправка</label><input type="text" id="productLocation" placeholder="г. Москва, ул. Пальмовая, 5"></div>
-        <div class="input-group"><label>Фото (до 5 шт.)</label><input type="file" id="productPhotos" accept="image/*" multiple><div id="photoPreview" class="photo-preview"></div></div>
-        <div style="display:flex; align-items:center; gap:10px; margin:20px 0;"><input type="checkbox" id="agreeCheckbox"><label for="agreeCheckbox">Я соглашаюсь с лицензионным соглашением Кокос</label></div>
+        <div class="input-group">
+          <label>Фото (до 5 шт.)</label>
+          <input type="file" id="productPhotos" accept="image/*" multiple>
+          <div id="photoPreview" class="photo-preview"></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; margin:20px 0;">
+          <input type="checkbox" id="agreeCheckbox">
+          <label for="agreeCheckbox">Я соглашаюсь с лицензионным соглашением Кокос</label>
+        </div>
         <button class="btn" id="submitProductBtn">🚀 Отправить на модерацию</button>
         <div id="addMessage" style="margin-top:16px;"></div>
       </div>
@@ -135,6 +143,7 @@
     let currentUser = null;
     let currentEmail = '';
     let pendingName = '';
+    let selectedFiles = []; // Для предпросмотра
 
     // DOM элементы входа
     const loginModal = document.getElementById('loginModal');
@@ -153,6 +162,34 @@
     const profilePopup = document.getElementById('profilePopup');
     const profileName = document.getElementById('profileName');
     const logoutBtn = document.getElementById('logoutBtn');
+
+    // DOM формы добавления
+    const productTitle = document.getElementById('productTitle');
+    const productDesc = document.getElementById('productDesc');
+    const productSpecs = document.getElementById('productSpecs');
+    const productPrice = document.getElementById('productPrice');
+    const productLocation = document.getElementById('productLocation');
+    const productPhotos = document.getElementById('productPhotos');
+    const photoPreview = document.getElementById('photoPreview');
+    const agreeCheckbox = document.getElementById('agreeCheckbox');
+    const submitProductBtn = document.getElementById('submitProductBtn');
+    const addMessage = document.getElementById('addMessage');
+
+    // Предпросмотр фото
+    productPhotos.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files);
+      selectedFiles = files.slice(0, 5);
+      photoPreview.innerHTML = '';
+      selectedFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = document.createElement('img');
+          img.src = ev.target.result;
+          photoPreview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
 
     // Переключение вкладок
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -233,7 +270,7 @@
           loginEmail.value = '';
           loginNameInput.value = '';
           loginCode.value = '';
-          loadProducts(); // загружаем товары после входа
+          loadProducts();
         }
       }
     });
@@ -304,6 +341,103 @@
       container.innerHTML = html;
     }
 
+    // ---------- ДОБАВЛЕНИЕ ТОВАРА ----------
+    submitProductBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        addMessage.textContent = '❌ Сначала войдите';
+        addMessage.style.color = '#c44';
+        return;
+      }
+
+      const title = productTitle.value.trim();
+      const desc = productDesc.value.trim();
+      const specs = productSpecs.value.trim();
+      const price = productPrice.value.trim();
+      const location = productLocation.value.trim();
+
+      if (!title || !desc || !price || !location) {
+        addMessage.textContent = '❌ Заполните все обязательные поля';
+        addMessage.style.color = '#c44';
+        return;
+      }
+
+      if (!agreeCheckbox.checked) {
+        addMessage.textContent = '❌ Примите лицензионное соглашение';
+        addMessage.style.color = '#c44';
+        return;
+      }
+
+      if (selectedFiles.length === 0) {
+        addMessage.textContent = '❌ Добавьте хотя бы одно фото';
+        addMessage.style.color = '#c44';
+        return;
+      }
+
+      submitProductBtn.disabled = true;
+      submitProductBtn.textContent = '⏳ Загружаем...';
+      addMessage.textContent = '';
+
+      try {
+        // 1. Загружаем фото в Storage
+        const imageUrls = [];
+        for (const file of selectedFiles) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(fileName, file);
+          if (uploadError) throw uploadError;
+          
+          const { data: urlData } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(fileName);
+          imageUrls.push(urlData.publicUrl);
+        }
+
+        // 2. Сохраняем товар в таблицу products
+        const { error: insertError } = await supabase
+          .from('products')
+          .insert({
+            user_id: currentUser.id,
+            title,
+            description: desc,
+            characteristics: specs,
+            price: parseFloat(price),
+            location,
+            image_urls: imageUrls,
+            status: 'pending'
+          });
+
+        if (insertError) throw insertError;
+
+        addMessage.textContent = '✅ Товар отправлен на модерацию!';
+        addMessage.style.color = '#2e7d32';
+        
+        // Очистка формы
+        productTitle.value = '';
+        productDesc.value = '';
+        productSpecs.value = '';
+        productPrice.value = '';
+        productLocation.value = '';
+        productPhotos.value = '';
+        photoPreview.innerHTML = '';
+        selectedFiles = [];
+        agreeCheckbox.checked = false;
+        
+        // Обновить каталог
+        if (document.getElementById('home').classList.contains('active')) {
+          loadProducts();
+        }
+      } catch (error) {
+        console.error(error);
+        addMessage.textContent = `❌ Ошибка: ${error.message}`;
+        addMessage.style.color = '#c44';
+      } finally {
+        submitProductBtn.disabled = false;
+        submitProductBtn.textContent = '🚀 Отправить на модерацию';
+      }
+    });
+
     // Автовход
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -314,7 +448,7 @@
             loginBtn.style.display = 'none';
             userIconBtn.style.display = 'flex';
             profileName.textContent = dbUser.name;
-            loadProducts(); // загружаем товары при автовходе
+            loadProducts();
           }
         });
       }
