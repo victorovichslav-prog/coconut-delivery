@@ -19,7 +19,8 @@
     .tab { display: none; }
     .tab.active { display: block; }
     .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-    .product-card { background: white; border-radius: 24px; padding: 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.05); border: 1px solid #e9dccd; }
+    .product-card { background: white; border-radius: 24px; padding: 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.05); border: 1px solid #e9dccd; cursor: pointer; transition: transform 0.1s; }
+    .product-card:hover { transform: scale(1.02); }
     .product-image { width: 100%; height: 160px; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #e9dccd; }
     .product-title { font-weight: 700; font-size: 18px; margin-bottom: 4px; color: #3f2e1f; }
     .product-price { font-weight: bold; color: #6b4f3c; margin-bottom: 8px; }
@@ -33,10 +34,18 @@
     .photo-preview img { width: 80px; height: 80px; object-fit: cover; border-radius: 12px; border: 2px solid #d4a373; }
     .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
     .modal.show { display: flex; }
-    .modal-content { background: white; max-width: 400px; width: 90%; border-radius: 32px; padding: 24px; }
+    .modal-content { background: white; max-width: 400px; width: 90%; border-radius: 32px; padding: 24px; max-height: 90vh; overflow-y: auto; }
     .profile-popup { position: absolute; top: 70px; right: 20px; background: white; border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 20px; display: none; border: 1px solid #e9dccd; z-index: 50; }
     .profile-popup.show { display: block; }
     .logout-btn { background: #eee4da; border: none; padding: 12px; border-radius: 40px; width: 100%; font-weight: 600; cursor: pointer; }
+    /* Карусель */
+    .carousel { position: relative; margin-bottom: 16px; }
+    .carousel-main { width: 100%; height: 250px; object-fit: contain; border-radius: 20px; background: #f3ede5; }
+    .carousel-thumbs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
+    .carousel-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 12px; cursor: pointer; border: 2px solid transparent; }
+    .carousel-thumb.active { border-color: #d4a373; }
+    .carousel-nav { display: flex; justify-content: center; gap: 20px; margin-top: 8px; }
+    .carousel-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #6b4f3c; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -127,6 +136,18 @@
     </div>
   </div>
 
+  <!-- МОДАЛЬНОЕ ОКНО ТОВАРА -->
+  <div id="productModal" class="modal">
+    <div class="modal-content" style="max-width: 500px; padding: 20px;">
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+        <button id="closeProductModal" style="background: none; border: none; font-size: 24px; cursor: pointer;">✕</button>
+      </div>
+      <div id="productDetailContent">
+        <!-- Заполняется динамически -->
+      </div>
+    </div>
+  </div>
+
   <!-- ПОПАП ПРОФИЛЯ -->
   <div class="profile-popup" id="profilePopup">
     <div style="font-weight:bold; font-size:18px; margin-bottom:10px;" id="profileName"></div>
@@ -143,7 +164,7 @@
     let currentUser = null;
     let currentEmail = '';
     let pendingName = '';
-    let selectedFiles = []; // Для предпросмотра
+    let selectedFiles = [];
 
     // DOM элементы входа
     const loginModal = document.getElementById('loginModal');
@@ -174,6 +195,11 @@
     const agreeCheckbox = document.getElementById('agreeCheckbox');
     const submitProductBtn = document.getElementById('submitProductBtn');
     const addMessage = document.getElementById('addMessage');
+
+    // Модальное окно товара
+    const productModal = document.getElementById('productModal');
+    const productDetailContent = document.getElementById('productDetailContent');
+    const closeProductModal = document.getElementById('closeProductModal');
 
     // Предпросмотр фото
     productPhotos.addEventListener('change', (e) => {
@@ -329,17 +355,137 @@
           ? product.image_urls[0] 
           : 'https://via.placeholder.com/300x200?text=🥥';
         html += `
-          <div class="product-card">
+          <div class="product-card" data-product-id="${product.id}">
             <img class="product-image" src="${imageUrl}" alt="${product.title}">
             <div class="product-title">${product.title}</div>
             <div class="product-price">${product.price} ₽</div>
             <div style="font-size:14px; color:#7f6b58; margin-bottom:12px;">📍 ${product.location}</div>
-            <button class="btn" onclick="alert('Переход к заказу пока не готов')">🛒 Заказать</button>
+            <button class="btn">🛒 Заказать</button>
           </div>
         `;
       });
       container.innerHTML = html;
+      
+      // Добавляем обработчики клика на карточки
+      document.querySelectorAll('.product-card').forEach(card => {
+        card.addEventListener('click', async (e) => {
+          // Если кликнули прямо на кнопку, не открываем карточку (кнопка обработается отдельно)
+          if (e.target.tagName === 'BUTTON') return;
+          const productId = card.dataset.productId;
+          await showProductDetails(productId);
+        });
+        
+        // Отдельно обработчик для кнопки "Заказать"
+        const btn = card.querySelector('.btn');
+        if (btn) {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            alert('Переход к оформлению заказа пока не готов');
+          });
+        }
+      });
     }
+
+    // ---------- ПОКАЗ ДЕТАЛЕЙ ТОВАРА ----------
+    async function showProductDetails(productId) {
+      const { data: product, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single();
+      
+      if (error || !product) {
+        alert('Товар не найден');
+        return;
+      }
+      
+      const images = product.image_urls && product.image_urls.length > 0 
+        ? product.image_urls 
+        : ['https://via.placeholder.com/400x300?text=🥥'];
+      
+      let currentImageIndex = 0;
+      
+      function renderCarousel() {
+        return `
+          <div class="carousel">
+            <img class="carousel-main" src="${images[currentImageIndex]}" alt="${product.title}">
+            ${images.length > 1 ? `
+              <div class="carousel-nav">
+                <button class="carousel-btn" id="prevImage">←</button>
+                <span style="padding: 0 10px;">${currentImageIndex+1} / ${images.length}</span>
+                <button class="carousel-btn" id="nextImage">→</button>
+              </div>
+              <div class="carousel-thumbs">
+                ${images.map((url, idx) => `
+                  <img class="carousel-thumb ${idx === currentImageIndex ? 'active' : ''}" 
+                       src="${url}" data-index="${idx}">
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+      
+      function renderContent() {
+        const carouselHtml = renderCarousel();
+        return `
+          ${carouselHtml}
+          <h2 style="color: #3f2e1f; margin-bottom: 8px;">${product.title}</h2>
+          <div style="font-size: 24px; font-weight: bold; color: #6b4f3c; margin-bottom: 16px;">${product.price} ₽</div>
+          <div style="margin-bottom: 12px;"><strong>📍 Откуда:</strong> ${product.location}</div>
+          <div style="margin-bottom: 12px;"><strong>📝 Описание:</strong><br>${product.description}</div>
+          ${product.characteristics ? `<div style="margin-bottom: 12px;"><strong>📋 Характеристики:</strong><br>${product.characteristics}</div>` : ''}
+          <button class="btn" id="orderFromDetailBtn" style="margin-top: 16px;">🛒 Заказать</button>
+        `;
+      }
+      
+      productDetailContent.innerHTML = renderContent();
+      
+      // Переключение карусели
+      if (images.length > 1) {
+        const prevBtn = document.getElementById('prevImage');
+        const nextBtn = document.getElementById('nextImage');
+        const thumbs = document.querySelectorAll('.carousel-thumb');
+        
+        function updateCarousel() {
+          const mainImg = document.querySelector('.carousel-main');
+          if (mainImg) mainImg.src = images[currentImageIndex];
+          thumbs.forEach((thumb, idx) => {
+            thumb.classList.toggle('active', idx === currentImageIndex);
+          });
+          const counter = document.querySelector('.carousel-nav span');
+          if (counter) counter.textContent = `${currentImageIndex+1} / ${images.length}`;
+        }
+        
+        if (prevBtn) prevBtn.addEventListener('click', () => {
+          currentImageIndex = (currentImageIndex - 1 + images.length) % images.length;
+          updateCarousel();
+        });
+        if (nextBtn) nextBtn.addEventListener('click', () => {
+          currentImageIndex = (currentImageIndex + 1) % images.length;
+          updateCarousel();
+        });
+        thumbs.forEach(thumb => {
+          thumb.addEventListener('click', () => {
+            currentImageIndex = parseInt(thumb.dataset.index);
+            updateCarousel();
+          });
+        });
+      }
+      
+      document.getElementById('orderFromDetailBtn').addEventListener('click', () => {
+        alert('Переход к оформлению заказа пока не готов');
+      });
+      
+      productModal.classList.add('show');
+    }
+
+    closeProductModal.addEventListener('click', () => {
+      productModal.classList.remove('show');
+    });
+    productModal.addEventListener('click', (e) => {
+      if (e.target === productModal) productModal.classList.remove('show');
+    });
 
     // ---------- ДОБАВЛЕНИЕ ТОВАРА ----------
     submitProductBtn.addEventListener('click', async () => {
@@ -378,7 +524,6 @@
       addMessage.textContent = '';
 
       try {
-        // 1. Загружаем фото в Storage
         const imageUrls = [];
         for (const file of selectedFiles) {
           const fileExt = file.name.split('.').pop();
@@ -394,7 +539,6 @@
           imageUrls.push(urlData.publicUrl);
         }
 
-        // 2. Сохраняем товар в таблицу products
         const { error: insertError } = await supabase
           .from('products')
           .insert({
@@ -413,7 +557,6 @@
         addMessage.textContent = '✅ Товар отправлен на модерацию!';
         addMessage.style.color = '#2e7d32';
         
-        // Очистка формы
         productTitle.value = '';
         productDesc.value = '';
         productSpecs.value = '';
@@ -424,7 +567,6 @@
         selectedFiles = [];
         agreeCheckbox.checked = false;
         
-        // Обновить каталог
         if (document.getElementById('home').classList.contains('active')) {
           loadProducts();
         }
